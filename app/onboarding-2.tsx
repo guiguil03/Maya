@@ -1,9 +1,10 @@
 import { AnimatedButton } from '@/components/animated-button';
-import { AnimatedScreen } from '@/components/animated-screen';
 import { FeatureIcon } from '@/components/feature-icon';
+import { NavigationTransition } from '@/components/navigation-transition';
 import { OnboardingContentCard } from '@/components/onboarding-content-card';
 import { OnboardingScreen } from '@/components/onboarding-screen';
 import { PaginationDots } from '@/components/pagination-dots';
+import { Colors } from '@/constants/design-system';
 import { router } from 'expo-router';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -18,20 +19,20 @@ export default function Onboarding2Screen() {
   };
 
   return (
-    <AnimatedScreen>
+    <NavigationTransition direction="right">
       <OnboardingScreen onSkip={handleSkip} onBack={() => router.back()} showBack={true}>
         <OnboardingContentCard
           icon={
             <FeatureIcon
               name="shield-checkmark"
-              color="#00FF88"
-              backgroundColor="rgba(0, 255, 136, 0.2)"
+              color={Colors.accent.emerald}
+              backgroundColor="rgba(16, 185, 129, 0.2)"
               animated={true}
             />
           }
           title="Sécurisé et simple"
           description="Votre QR code unique vous garantit des paiements sécurisés et rapides"
-          gradientColors={['#4facfe', '#00f2fe']}
+          gradientColors={Colors.gradients.success}
         />
         
         <View style={styles.paginationContainer}>
@@ -44,7 +45,7 @@ export default function Onboarding2Screen() {
           />
         </View>
       </OnboardingScreen>
-    </AnimatedScreen>
+    </NavigationTransition>
   );
 }
 

@@ -4,9 +4,6 @@ import { StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
-  withRepeat,
-  withSequence,
   withTiming
 } from 'react-native-reanimated';
 
@@ -30,26 +27,9 @@ export function FeatureIcon({
 
   React.useEffect(() => {
     if (animated) {
-      // Animation de pulsation
-      scale.value = withRepeat(
-        withSequence(
-          withTiming(1.1, { duration: 1000 }),
-          withTiming(1, { duration: 1000 })
-        ),
-        -1,
-        true
-      );
-      
-      // Animation de rotation subtile
-      rotation.value = withDelay(500, withRepeat(
-        withSequence(
-          withTiming(5, { duration: 2000 }),
-          withTiming(-5, { duration: 2000 }),
-          withTiming(0, { duration: 1000 })
-        ),
-        -1,
-        false
-      ));
+      // Animation simple et subtile
+      scale.value = withTiming(1, { duration: 800 });
+      rotation.value = withTiming(0, { duration: 800 });
     }
   }, [animated]);
 

@@ -1,9 +1,10 @@
 import { AnimatedButton } from '@/components/animated-button';
-import { AnimatedScreen } from '@/components/animated-screen';
 import { FeatureIcon } from '@/components/feature-icon';
+import { NavigationTransition } from '@/components/navigation-transition';
 import { OnboardingContentCard } from '@/components/onboarding-content-card';
 import { OnboardingScreen } from '@/components/onboarding-screen';
 import { PaginationDots } from '@/components/pagination-dots';
+import { Colors } from '@/constants/design-system';
 import { router } from 'expo-router';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -18,20 +19,20 @@ export default function Index() {
   };
 
   return (
-    <AnimatedScreen>
+    <NavigationTransition direction="right">
       <OnboardingScreen onSkip={handleSkip}>
         <OnboardingContentCard
           icon={
             <FeatureIcon
               name="flash"
-              color="#FFD700"
-              backgroundColor="rgba(255, 215, 0, 0.2)"
+              color={Colors.accent.gold}
+              backgroundColor="rgba(251, 191, 36, 0.2)"
               animated={true}
             />
           }
           title="10% de remise immédiate"
           description="Économisez sur tous vos achats chez nos partenaires avec un simple scan"
-          gradientColors={['#667eea', '#764ba2']}
+          gradientColors={Colors.gradients.primary}
         />
         
         <View style={styles.paginationContainer}>
@@ -44,7 +45,7 @@ export default function Index() {
           />
         </View>
       </OnboardingScreen>
-    </AnimatedScreen>
+    </NavigationTransition>
   );
 }
 

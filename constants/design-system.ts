@@ -38,14 +38,14 @@ export const Colors = {
     orange: '#f97316',
   },
   
-  // Gradients cohérents
+  // Gradients cohérents basés sur la palette principale
   gradients: {
-    primary: ['#667eea', '#764ba2'],
-    secondary: ['#f093fb', '#f5576c'],
-    success: ['#4facfe', '#00f2fe'],
-    warning: ['#fa709a', '#fee140'],
-    info: ['#a8edea', '#fed6e3'],
-    dark: ['#2c3e50', '#3498db'],
+    primary: ['#667eea', '#764ba2'], // Bleu-violet principal
+    secondary: ['#667eea', '#8b5cf6'], // Variation violette
+    success: ['#4facfe', '#667eea'], // Bleu-cyan vers bleu principal
+    warning: ['#f093fb', '#667eea'], // Rose vers bleu principal
+    info: ['#a8edea', '#667eea'], // Turquoise vers bleu principal
+    dark: ['#2c3e50', '#667eea'], // Sombre vers bleu principal
   },
   
   // Couleurs de fond

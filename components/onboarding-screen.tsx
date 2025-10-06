@@ -1,3 +1,4 @@
+import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
@@ -23,7 +24,7 @@ export function OnboardingScreen({
 }: OnboardingScreenProps) {
   return (
     <LinearGradient
-      colors={['#667eea', '#764ba2', '#f093fb']}
+      colors={Colors.gradients.primary}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.container}
@@ -71,59 +72,59 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
   },
   logoContainer: {
     alignItems: 'center',
   },
   appName: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: 'white',
-    letterSpacing: 1,
+    fontSize: Typography.sizes['4xl'],
+    fontWeight: Typography.weights.extrabold,
+    color: Colors.text.light,
+    letterSpacing: Typography.letterSpacing.wide,
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
   logoUnderline: {
-    width: 40,
-    height: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    borderRadius: 2,
-    marginTop: 4,
+    width: 50,
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: BorderRadius.sm,
+    marginTop: Spacing.xs,
   },
   backButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backdropFilter: 'blur(10px)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: BorderRadius['2xl'],
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    ...Shadows.sm,
   },
   backButtonInner: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   backText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
+    color: Colors.text.light,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semibold,
+    marginLeft: Spacing.xs,
   },
   skipButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backdropFilter: 'blur(10px)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: BorderRadius['2xl'],
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    ...Shadows.sm,
   },
   skipText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
+    color: Colors.text.light,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semibold,
   },
   placeholder: {
-    width: 80,
+    width: 100,
   },
 });

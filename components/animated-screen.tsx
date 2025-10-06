@@ -3,7 +3,6 @@ import { StyleSheet } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
   withTiming
 } from 'react-native-reanimated';
 
@@ -19,9 +18,9 @@ export function AnimatedScreen({ children, delay = 0 }: AnimatedScreenProps) {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      opacity.value = withTiming(1, { duration: 800 });
-      translateY.value = withSpring(0, { damping: 15, stiffness: 100 });
-      scale.value = withSpring(1, { damping: 15, stiffness: 100 });
+      opacity.value = withTiming(1, { duration: 600 });
+      translateY.value = withTiming(0, { duration: 600 });
+      scale.value = withTiming(1, { duration: 600 });
     }, delay);
 
     return () => clearTimeout(timer);

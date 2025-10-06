@@ -4,9 +4,6 @@ import { Dimensions, Image, StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
-  withSequence,
-  withSpring,
   withTiming
 } from 'react-native-reanimated';
 
@@ -29,31 +26,18 @@ export function OnboardingContentCard({
   gradientColors = ['#3B82F6', '#8B5CF6'],
   delay = 0
 }: OnboardingContentCardProps) {
-  const iconScale = useSharedValue(0);
-  const titleOpacity = useSharedValue(0);
-  const descriptionOpacity = useSharedValue(0);
-  const cardScale = useSharedValue(0.9);
+  const iconScale = useSharedValue(1);
+  const titleOpacity = useSharedValue(1);
+  const descriptionOpacity = useSharedValue(1);
+  const cardScale = useSharedValue(1);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      // Animation de l'icône
-      iconScale.value = withSequence(
-        withTiming(1.2, { duration: 300 }),
-        withSpring(1, { damping: 15, stiffness: 100 })
-      );
-      
-      // Animation du titre
-      titleOpacity.value = withDelay(200, withTiming(1, { duration: 600 }));
-      
-      // Animation de la description
-      descriptionOpacity.value = withDelay(400, withTiming(1, { duration: 600 }));
-      
-      // Animation de la carte
-      cardScale.value = withDelay(100, withSpring(1, { damping: 15, stiffness: 100 }));
-    }, delay);
-
-    return () => clearTimeout(timer);
-  }, [delay]);
+    // Démarrer immédiatement pour éviter le fond noir
+    iconScale.value = withTiming(1, { duration: 300 });
+    titleOpacity.value = withTiming(1, { duration: 300 });
+    descriptionOpacity.value = withTiming(1, { duration: 300 });
+    cardScale.value = withTiming(1, { duration: 300 });
+  }, []);
 
   const iconAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: iconScale.value }],
