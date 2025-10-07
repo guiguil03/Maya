@@ -3,12 +3,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import {
-    StyleSheet,
-    Text,
-    TextStyle,
-    TouchableOpacity,
-    View,
-    ViewStyle,
+  StyleSheet,
+  Text,
+  TextStyle,
+  TouchableOpacity,
+  View,
+  ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -67,14 +67,7 @@ export function SharedHeader({
             </View>
           )}
 
-          <TouchableOpacity style={styles.searchBar} onPress={onSearchPress} activeOpacity={0.8}>
-            <Ionicons name="search" size={18} color="#9CA3AF" />
-            <Text style={styles.searchPlaceholder}>Rechercher un partenaire ou une catégorie</Text>
-            <View style={styles.scanChip}>
-              <Ionicons name="scan" size={14} color="#8B5CF6" />
-              <Text style={styles.scanChipText}>Scanner</Text>
-            </View>
-          </TouchableOpacity>
+          
 
           {rightSlot ? (
             <View>{rightSlot}</View>

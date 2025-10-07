@@ -3,11 +3,11 @@ import { SharedHeader } from '@/components/shared-header';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
 import React from 'react';
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -24,10 +24,15 @@ export default function HistoryScreen() {
         <SafeAreaView style={styles.safeArea}>
           <SharedHeader
             title="Historique"
-            subtitle="Vos économies récentes"
+            subtitle={`${transactions.length} transactions récentes`}
             showPartnerMode={false}
             variant="history"
             gradientColors={['#06B6D4', '#3B82F6'] as const}
+            rightSlot={(
+              <TouchableOpacity style={{ backgroundColor: 'white', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16 }}>
+                <Text style={{ color: '#3B82F6', fontWeight: '600' }}>Exporter</Text>
+              </TouchableOpacity>
+            )}
           />
 
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
