@@ -47,6 +47,20 @@ export default function HomeScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
+          <View style={styles.quickActions}>
+            <View style={styles.quickAction}>
+              <Ionicons name="scan" size={18} color="#8B5CF6" />
+              <Text style={styles.quickActionText}>Scanner</Text>
+            </View>
+            <View style={styles.quickAction}>
+              <Ionicons name="storefront" size={18} color="#10B981" />
+              <Text style={styles.quickActionText}>Partenaires</Text>
+            </View>
+            <View style={styles.quickAction}>
+              <Ionicons name="card" size={18} color="#F59E0B" />
+              <Text style={styles.quickActionText}>Abonnement</Text>
+            </View>
+          </View>
           <View style={styles.qrCard}>
             <Text style={styles.qrTitle}>Votre QR Code Maya</Text>
             <Text style={styles.qrSubtitle}>Présentez ce code chez tous nos partenaires</Text>
@@ -80,6 +94,7 @@ export default function HomeScreen() {
               onPress={handleScanPartner}
               icon="scan"
               style={styles.scanButton}
+              variant="solid"
             />
           </View>
 
@@ -122,6 +137,25 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.xl,
   } as ViewStyle,
+  quickActions: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginBottom: Spacing.lg,
+  } as ViewStyle,
+  quickAction: {
+    flex: 1,
+    backgroundColor: Colors.background.card,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    ...Shadows.sm,
+  } as ViewStyle,
+  quickActionText: {
+    marginTop: 6,
+    color: Colors.text.primary,
+    fontSize: Typography.sizes.sm,
+    fontWeight: '600',
+  } as TextStyle,
   qrCard: {
     backgroundColor: Colors.background.card,
     borderRadius: BorderRadius['2xl'],

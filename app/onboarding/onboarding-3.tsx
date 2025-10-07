@@ -9,13 +9,13 @@ import { router } from 'expo-router';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
-export default function Onboarding2Screen() {
+export default function Onboarding3Screen() {
   const handleSkip = () => {
-    router.push('/login');
+    router.push('/connexion/login');
   };
 
   const handleNext = () => {
-    router.push('/onboarding-3');
+    router.push('/onboarding/onboarding-4');
   };
 
   return (
@@ -24,19 +24,19 @@ export default function Onboarding2Screen() {
         <OnboardingContentCard
           icon={
             <FeatureIcon
-              name="shield-checkmark"
-              color={Colors.accent.emerald}
-              backgroundColor="rgba(16, 185, 129, 0.2)"
+              name="gift"
+              color={Colors.accent.rose}
+              backgroundColor="rgba(244, 63, 94, 0.2)"
               animated={true}
             />
           }
-          title="Sécurisé et simple"
-          description="Votre QR code unique vous garantit des paiements sécurisés et rapides"
-          gradientColors={Colors.gradients.success}
+          title="Offres exclusives"
+          description="Accédez à des promotions spéciales réservées aux membres Maya"
+          gradientColors={Colors.gradients.warning}
         />
         
         <View style={styles.paginationContainer}>
-          <PaginationDots totalPages={4} currentPage={1} />
+          <PaginationDots totalPages={4} currentPage={2} />
           <AnimatedButton
             title="Suivant"
             onPress={handleNext}

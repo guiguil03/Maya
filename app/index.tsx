@@ -11,11 +11,11 @@ import { StyleSheet, View } from 'react-native';
 
 export default function Index() {
   const handleSkip = () => {
-    router.push('/login');
+    router.push('/connexion/login');
   };
 
   const handleNext = () => {
-    router.push('/onboarding-2');
+    router.push('/onboarding/onboarding-2');
   };
 
   return (

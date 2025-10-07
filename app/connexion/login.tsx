@@ -7,14 +7,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Alert,
-  StyleSheet,
-  Text,
-  TextInput,
-  TextStyle,
-  TouchableOpacity,
-  View,
-  ViewStyle
+    Alert,
+    StyleSheet,
+    Text,
+    TextInput,
+    TextStyle,
+    TouchableOpacity,
+    View,
+    ViewStyle
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -22,7 +22,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { signIn, loading } = useAuth();
+  const { signIn } = useAuth();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -32,7 +32,7 @@ export default function LoginScreen() {
     try {
       await signIn({ email, password });
       router.replace('/(tabs)/home');
-    } catch (e) {
+    } catch {
       Alert.alert('Erreur', "Échec de la connexion");
     }
   };
@@ -75,21 +75,14 @@ export default function LoginScreen() {
               <Text style={styles.subtitle}>Connectez-vous pour accéder à vos économies</Text>
 
               <View style={styles.socialButtons}>
-                <AnimatedButton
-                  title="Google"
-                  onPress={() => handleSocialLogin('Google')}
-                  icon="logo-google"
-                  variant="outline"
-                  style={styles.socialButton}
-                />
-
-                <AnimatedButton
-                  title="Facebook"
-                  onPress={() => handleSocialLogin('Facebook')}
-                  icon="logo-facebook"
-                  variant="outline"
-                  style={styles.socialButton}
-                />
+                <TouchableOpacity style={styles.socialIconButton} onPress={() => handleSocialLogin('Google')}>
+                  <Ionicons name="logo-google" size={20} color="#8B5CF6" />
+                  <Text style={styles.socialButtonText}>Google</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.socialIconButton} onPress={() => handleSocialLogin('Facebook')}>
+                  <Ionicons name="logo-facebook" size={20} color="#8B5CF6" />
+                  <Text style={styles.socialButtonText}>Facebook</Text>
+                </TouchableOpacity>
               </View>
 
               <View style={styles.divider}>
@@ -135,6 +128,7 @@ export default function LoginScreen() {
                 onPress={handleLogin}
                 icon="log-in"
                 style={styles.loginButton}
+                variant="solid"
               />
 
               <TouchableOpacity style={styles.forgotPassword}>
@@ -157,8 +151,8 @@ export default function LoginScreen() {
 
               <View style={styles.signupContainer}>
                 <Text style={styles.signupText}>Pas encore de compte ? </Text>
-                <TouchableOpacity>
-                  <Text style={styles.signupLink}>S'inscrire</Text>
+                <TouchableOpacity onPress={() => router.push('/connexion/signup')}>
+                  <Text style={styles.signupLink}>S’inscrire</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -186,6 +180,8 @@ type LoginStyles = {
   subtitle: TextStyle;
   socialButtons: ViewStyle;
   socialButton: ViewStyle;
+  socialIconButton: ViewStyle;
+  socialButtonText: TextStyle;
   divider: ViewStyle;
   dividerLine: ViewStyle;
   dividerText: TextStyle;
@@ -265,7 +261,8 @@ const styles = StyleSheet.create<LoginStyles>({
   card: {
     backgroundColor: Colors.background.card,
     borderRadius: BorderRadius['3xl'],
-    padding: Spacing['2xl'],
+    paddingHorizontal: Spacing['2xl'],
+    paddingVertical: Spacing.lg,
     marginVertical: Spacing.lg,
     ...Shadows.xl,
   },
@@ -289,6 +286,22 @@ const styles = StyleSheet.create<LoginStyles>({
   },
   socialButton: {
     flex: 1,
+  },
+  socialIconButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    height: 44,
+    paddingHorizontal: 14,
+    borderRadius: 22,
+    backgroundColor: Colors.background.card,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  socialButtonText: {
+    color: '#6B7280',
+    fontSize: 14,
+    fontWeight: '500',
   },
   divider: {
     flexDirection: 'row',

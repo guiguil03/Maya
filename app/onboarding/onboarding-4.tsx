@@ -9,13 +9,13 @@ import { router } from 'expo-router';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
-export default function Onboarding3Screen() {
+export default function Onboarding4Screen() {
   const handleSkip = () => {
-    router.push('/login');
+    router.push('/connexion/login');
   };
 
   const handleNext = () => {
-    router.push('/onboarding-4');
+    router.push('/connexion/login');
   };
 
   return (
@@ -24,21 +24,21 @@ export default function Onboarding3Screen() {
         <OnboardingContentCard
           icon={
             <FeatureIcon
-              name="gift"
-              color={Colors.accent.rose}
-              backgroundColor="rgba(244, 63, 94, 0.2)"
+              name="star"
+              color={Colors.accent.gold}
+              backgroundColor="rgba(251, 191, 36, 0.2)"
               animated={true}
             />
           }
-          title="Offres exclusives"
-          description="Accédez à des promotions spéciales réservées aux membres Maya"
-          gradientColors={Colors.gradients.warning}
+          title="Rejoignez Maya"
+          description="Des milliers de partenaires vous attendent pour maximiser vos économies"
+          gradientColors={Colors.gradients.info}
         />
         
         <View style={styles.paginationContainer}>
-          <PaginationDots totalPages={4} currentPage={2} />
+          <PaginationDots totalPages={4} currentPage={3} />
           <AnimatedButton
-            title="Suivant"
+            title="Commencer"
             onPress={handleNext}
             icon="arrow-forward"
             style={styles.nextButton}
