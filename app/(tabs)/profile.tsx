@@ -1,7 +1,9 @@
 import { NavigationTransition } from '@/components/navigation-transition';
 import { SharedHeader } from '@/components/shared-header';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
+import { useAuth } from '@/hooks/use-auth';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ScrollView,
@@ -18,8 +20,13 @@ export default function ProfileScreen() {
   const [pushEnabled, setPushEnabled] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [faceId, setFaceId] = useState(true);
+  const { signOut } = useAuth();
   const handlePartnerMode = () => {
     console.log('Mode partenaire');
+  };
+  const handleLogout = async () => {
+    await signOut();
+    router.replace('/connexion/login');
   };
 
   return (
@@ -70,7 +77,7 @@ export default function ProfileScreen() {
               </View>
             </View>
             <TouchableOpacity>
-              <Text style={styles.cancelLink}>Résilier l'abonnement</Text>
+              <Text style={styles.cancelLink}>Résilier l’abonnement</Text>
             </TouchableOpacity>
           </View>
 
@@ -161,6 +168,14 @@ export default function ProfileScreen() {
               <Ionicons name="help-circle-outline" size={22} color={Colors.text.primary} />
               <Text style={styles.menuText}>Aide et support</Text>
               <Ionicons name="chevron-forward" size={20} color={Colors.text.muted} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Déconnexion */}
+          <View style={styles.logoutContainer}>
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <Ionicons name="log-out" size={20} color="#EF4444" />
+              <Text style={styles.logoutText}>Se déconnecter</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -371,6 +386,26 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     ...Shadows.sm,
   } as ViewStyle,
+  logoutContainer: {
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.lg,
+  } as ViewStyle,
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    backgroundColor: '#FEF2F2',
+    ...Shadows.sm,
+  } as ViewStyle,
+  logoutText: {
+    marginLeft: Spacing.sm,
+    color: '#EF4444',
+    fontWeight: '600',
+  } as TextStyle,
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
