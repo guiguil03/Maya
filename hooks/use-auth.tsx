@@ -15,7 +15,32 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Commencer par true pour charger l'utilisateur
+
+  // Charger l'utilisateur au démarrage
+  React.useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const currentUser = await AuthService.getCurrentUser();
+        const isAuth = await AuthService.isAuthenticated();
+        
+        if (currentUser && isAuth) {
+          setUser(currentUser);
+          console.log('👤 Utilisateur chargé au démarrage:', currentUser.email);
+        } else {
+          setUser(null);
+          console.log('❌ Aucun utilisateur connecté');
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors du chargement de l\'utilisateur:', error);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUser();
+  }, []);
 
   const signIn = useCallback(async (loginData: LoginRequest) => {
     setLoading(true);
@@ -52,8 +77,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = useCallback(async () => {
     setLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await AuthService.signOut();
       setUser(null);
+      console.log('👋 Déconnexion réussie');
+    } catch (error) {
+      console.error('❌ Erreur lors de la déconnexion:', error);
+      setUser(null); // Déconnecter quand même localement
     } finally {
       setLoading(false);
     }

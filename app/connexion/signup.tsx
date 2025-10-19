@@ -8,14 +8,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TextStyle,
-  TouchableOpacity,
-  View,
-  ViewStyle
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TextStyle,
+    TouchableOpacity,
+    View,
+    ViewStyle
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -103,9 +103,25 @@ export default function SignupScreen() {
       setErrorMessage('Les deux mots de passe doivent être identiques');
       return;
     }
-    if (password.length < 6) {
-      setPasswordError('❌ Minimum 6 caractères requis');
-      setErrorMessage('Le mot de passe doit contenir au moins 6 caractères');
+    
+    // Validation du mot de passe selon les critères de l'API
+    if (password.length < 8) {
+      setPasswordError('❌ Minimum 8 caractères requis');
+      setErrorMessage('Le mot de passe doit contenir au moins 8 caractères');
+      return;
+    }
+    
+    // Vérifier qu'il y a au moins un chiffre
+    if (!/\d/.test(password)) {
+      setPasswordError('❌ Au moins un chiffre requis (0-9)');
+      setErrorMessage('Le mot de passe doit contenir au moins un chiffre');
+      return;
+    }
+    
+    // Vérifier qu'il y a au moins une majuscule
+    if (!/[A-Z]/.test(password)) {
+      setPasswordError('❌ Au moins une majuscule requise (A-Z)');
+      setErrorMessage('Le mot de passe doit contenir au moins une lettre majuscule');
       return;
     }
 
@@ -316,6 +332,41 @@ export default function SignupScreen() {
                   {passwordError ? (
                     <Text style={styles.fieldError}>{passwordError}</Text>
                   ) : null}
+                  
+                  {/* Indicateurs de critères de mot de passe */}
+                  <View style={styles.passwordCriteria}>
+                    <Text style={styles.criteriaTitle}>Critères requis :</Text>
+                    <View style={styles.criteriaItem}>
+                      <Ionicons 
+                        name={password.length >= 8 ? "checkmark-circle" : "close-circle"} 
+                        size={16} 
+                        color={password.length >= 8 ? "#10B981" : "#DC2626"} 
+                      />
+                      <Text style={[styles.criteriaText, password.length >= 8 ? styles.criteriaMet : styles.criteriaNotMet]}>
+                        Au moins 8 caractères
+                      </Text>
+                    </View>
+                    <View style={styles.criteriaItem}>
+                      <Ionicons 
+                        name={/\d/.test(password) ? "checkmark-circle" : "close-circle"} 
+                        size={16} 
+                        color={/\d/.test(password) ? "#10B981" : "#DC2626"} 
+                      />
+                      <Text style={[styles.criteriaText, /\d/.test(password) ? styles.criteriaMet : styles.criteriaNotMet]}>
+                        Au moins un chiffre (0-9)
+                      </Text>
+                    </View>
+                    <View style={styles.criteriaItem}>
+                      <Ionicons 
+                        name={/[A-Z]/.test(password) ? "checkmark-circle" : "close-circle"} 
+                        size={16} 
+                        color={/[A-Z]/.test(password) ? "#10B981" : "#DC2626"} 
+                      />
+                      <Text style={[styles.criteriaText, /[A-Z]/.test(password) ? styles.criteriaMet : styles.criteriaNotMet]}>
+                        Au moins une majuscule (A-Z)
+                      </Text>
+                    </View>
+                  </View>
                 </View>
 
                 <View style={styles.inputContainer}>
@@ -497,6 +548,12 @@ type SignupStyles = {
   fieldError: TextStyle;
   row: ViewStyle;
   halfWidth: ViewStyle;
+  passwordCriteria: ViewStyle;
+  criteriaTitle: TextStyle;
+  criteriaItem: ViewStyle;
+  criteriaText: TextStyle;
+  criteriaMet: TextStyle;
+  criteriaNotMet: TextStyle;
 };
 
 const styles = StyleSheet.create<SignupStyles>({
@@ -671,6 +728,36 @@ const styles = StyleSheet.create<SignupStyles>({
   },
   halfWidth: {
     flex: 1,
+  },
+  passwordCriteria: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  criteriaTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  criteriaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  criteriaText: {
+    fontSize: 13,
+    marginLeft: 8,
+  },
+  criteriaMet: {
+    color: '#10B981',
+    fontWeight: '500',
+  },
+  criteriaNotMet: {
+    color: '#6B7280',
   },
 });
 
