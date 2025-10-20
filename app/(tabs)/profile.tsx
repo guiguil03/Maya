@@ -1,6 +1,6 @@
 import { DebugUsersViewer } from '@/components/debug-users-viewer';
 import { NavigationTransition } from '@/components/navigation-transition';
-import { SharedHeader } from '@/components/shared-header';
+import { ProfileHeader } from '@/components/headers/profile-header';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
 import { useAuth } from '@/hooks/use-auth';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,13 +34,12 @@ export default function ProfileScreen() {
   return (
     <NavigationTransition>
       <View style={styles.container}>
-        <SharedHeader
+        <ProfileHeader
           title="Mon Profil"
           subtitle="Gérez votre compte"
-          onPartnerModePress={handlePartnerMode}
-          showPartnerMode={false}
-          variant="profile"
-          gradientColors={['#7C3AED', '#3B82F6'] as const}
+          userEmail={user?.email}
+          onSettingsPress={() => console.log('Settings')}
+          onNotificationPress={() => console.log('Notifications')}
         />
 
         <ScrollView

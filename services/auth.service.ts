@@ -126,12 +126,17 @@ const removePassword = (user: User): PublicUser => {
 const apiCall = async <T>(endpoint: string, options: RequestInit = {}, retryCount: number = 0): Promise<T> => {
   const url = `${API_BASE_URL}${endpoint}`;
   
+  // Récupérer le token d'authentification si disponible
+  const tokens = await getTokens();
+  
   const defaultHeaders = {
     'Content-Type': 'application/json',
+    ...(tokens?.accessToken && { 'Authorization': `Bearer ${tokens.accessToken}` }),
   };
 
   console.log(`🌐 Appel API vers: ${url}`);
   console.log('📤 Données envoyées:', options.body);
+  console.log('🔑 Token présent:', !!tokens?.accessToken);
 
   try {
     // Créer un AbortController pour gérer le timeout
@@ -165,7 +170,7 @@ const apiCall = async <T>(endpoint: string, options: RequestInit = {}, retryCoun
         const errorData = await response.json();
         console.log('❌ Détails de l\'erreur API:', errorData);
         errorMessage = errorData.message || errorData.error || errorMessage;
-      } catch (e) {
+      } catch {
         console.log('❌ Impossible de parser l\'erreur JSON');
       }
       throw new Error(errorMessage);
@@ -204,8 +209,23 @@ const loadUsers = async (): Promise<User[]> => {
   }
 
   try {
-    // Charger les utilisateurs de base depuis le JSON
-    const baseUsers: User[] = [...usersData.users];
+    // Charger les utilisateurs de base depuis le JSON et les convertir au bon format
+    const baseUsers: User[] = usersData.users.map(user => ({
+      id: user.id,
+      email: user.email,
+      password: user.password,
+      firstName: user.name.split(' ')[0] || '',
+      lastName: user.name.split(' ').slice(1).join(' ') || '',
+      birthDate: '1990-01-01', // Valeur par défaut
+      address: {
+        street: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: '',
+      },
+      createdAt: user.createdAt,
+    }));
 
     // Charger les nouveaux utilisateurs depuis AsyncStorage
     const storedUsersJson = await AsyncStorage.getItem(STORAGE_KEY);
@@ -225,7 +245,22 @@ const loadUsers = async (): Promise<User[]> => {
     return allUsers;
   } catch (error) {
     console.error('Erreur lors du chargement des utilisateurs:', error);
-    return [...usersData.users];
+    return usersData.users.map(user => ({
+      id: user.id,
+      email: user.email,
+      password: user.password,
+      firstName: user.name.split(' ')[0] || '',
+      lastName: user.name.split(' ').slice(1).join(' ') || '',
+      birthDate: '1990-01-01',
+      address: {
+        street: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: '',
+      },
+      createdAt: user.createdAt,
+    }));
   }
 };
 
@@ -327,9 +362,9 @@ export const AuthService = {
     } catch (error) {
       console.log('❌ Erreur lors de la connexion:', error);
       console.log('🔍 Détails de l\'erreur:', {
-        name: error?.name,
-        message: error?.message,
-        stack: error?.stack?.substring(0, 200) + '...'
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack?.substring(0, 200) + '...' : 'No stack trace'
       });
       
       // Vérifier si c'est une erreur d'identifiants invalides
@@ -603,6 +638,34 @@ export const AuthService = {
   },
 
   /**
+   * Récupérer les informations complètes de l'utilisateur actuellement connecté depuis l'API
+   * @returns Informations complètes de l'utilisateur
+   */
+  getCurrentUserInfo: async (): Promise<PublicUser> => {
+    try {
+      // Vérifier d'abord si l'utilisateur est authentifié
+      const isAuth = await AuthService.isAuthenticated();
+      if (!isAuth) {
+        throw new Error('Utilisateur non authentifié');
+      }
+
+      const response = await apiCall('/auth/me', {
+        method: 'GET',
+      }) as { user: PublicUser };
+
+      if (!response.user) {
+        throw new Error('Aucune donnée utilisateur reçue');
+      }
+
+      console.log('👤 Informations utilisateur récupérées depuis l\'API:', response.user.email);
+      return response.user;
+    } catch (error) {
+      console.error('❌ Erreur lors de la récupération des infos utilisateur:', error);
+      throw new Error('Impossible de récupérer les informations utilisateur');
+    }
+  },
+
+  /**
    * Vérifier si un utilisateur est connecté
    */
   isAuthenticated: async (): Promise<boolean> => {
@@ -628,29 +691,5 @@ export const AuthService = {
     }
   },
 
-  /**
-   * Réinitialiser le mot de passe d'un utilisateur via l'API
-   * @param email - Email de l'utilisateur (pour compatibilité avec l'UI)
-   * @param newPassword - Nouveau mot de passe
-   * @throws Error si l'utilisateur n'existe pas
-   */
-  resetPassword: async (email: string, newPassword: string): Promise<void> => {
-    try {
-      console.log('🔑 Réinitialisation du mot de passe pour:', email);
-      
-      // Note: L'API nécessite un token, mais l'UI ne l'a pas
-      // Pour l'instant, on va simuler le succès car l'utilisateur a déjà demandé le reset
-      console.log('⚠️ Note: L\'API nécessite un token de reset, mais l\'UI ne l\'a pas');
-      console.log('🔄 Simulation du succès de la réinitialisation');
-      
-      // TODO: Implémenter le flux complet avec token de reset
-      // await AuthService.resetPassword(token, newPassword);
-      
-      console.log('✅ Mot de passe réinitialisé avec succès (simulé)');
-    } catch (error) {
-      console.log('❌ Erreur lors de la réinitialisation:', error);
-      throw new Error('Échec de la réinitialisation du mot de passe');
-    }
-  },
 };
 

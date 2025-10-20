@@ -1,18 +1,19 @@
 import { NavigationTransition } from '@/components/navigation-transition';
 import { FilterChips } from '@/components/partners/filter-chips';
 import { PartnerCard } from '@/components/partners/partner-card';
+import { PartnersHeader } from '@/components/partners/partners-header';
 import { RealMapsView } from '@/components/partners/real-maps-view';
+import { SearchBar } from '@/components/partners/search-bar';
 import { ViewToggle } from '@/components/partners/view-toggle';
-import { SharedHeader } from '@/components/shared-header';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/design-system';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
+    Animated,
     Modal,
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TextStyle,
     TouchableOpacity,
     View,
@@ -26,6 +27,10 @@ export default function PartnersScreen() {
   const [viewMode, setViewMode] = useState<'liste' | 'carte'>('liste');
   const [selectedPartner, setSelectedPartner] = useState<any>(null);
   const [showPartnerModal, setShowPartnerModal] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Animation pour les transitions
+  const fadeAnim = React.useRef(new Animated.Value(1)).current;
 
   // Données des partenaires (à remplacer par des données réelles)
   const partners = [
@@ -104,21 +109,54 @@ export default function PartnersScreen() {
     },
   ];
 
+  // Calcul des statistiques
+  const stats = {
+    totalPartners: partners.length,
+    nearbyPartners: partners.filter(p => p.distance < 1).length,
+    activePromotions: partners.filter(p => p.promotion?.isActive).length,
+    averageRating: partners.reduce((sum, p) => sum + p.rating, 0) / partners.length,
+  };
+
+  // Filtrage des partenaires
+  const filteredPartners = partners.filter(partner => {
+    const matchesSearch = partner.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         partner.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         partner.category.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesFilter = selectedFilter === 'Tous' || 
+                         partner.category === selectedFilter ||
+                         (selectedFilter === 'Promotions' && partner.promotion?.isActive);
+    
+    return matchesSearch && matchesFilter;
+  });
+
   const handlePartnerMode = () => {
     console.log('Mode partenaire');
   };
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    // Logique de recherche
   };
 
   const handleFilterChange = (filter: string) => {
     setSelectedFilter(filter);
-    // Logique de filtrage
   };
 
   const handleViewToggle = (mode: 'liste' | 'carte') => {
+    // Animation de transition
+    Animated.sequence([
+      Animated.timing(fadeAnim, {
+        toValue: 0.3,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    
     setViewMode(mode);
   };
 
@@ -132,37 +170,32 @@ export default function PartnersScreen() {
     setSelectedPartner(null);
   };
 
+  const handleFilterPress = () => {
+    setShowFilters(!showFilters);
+  };
+
   return (
     <NavigationTransition>
       <View style={styles.container}>
-        <SharedHeader
+        <PartnersHeader
           title="Partenaires"
-          subtitle={`${partners.length} partenaires près de vous`}
-          onPartnerModePress={handlePartnerMode}
-          showPartnerMode={false}
-          variant="partners"
-          gradientColors={['#9333EA', '#3B82F6'] as const}
-          rightSlot={(
-            <TouchableOpacity style={{ backgroundColor: 'white', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16 }}>
-              <Ionicons name="filter" size={16} color="#8B5CF6" />
-            </TouchableOpacity>
-          )}
+          subtitle={`${filteredPartners.length} partenaires trouvés`}
+          totalPartners={stats.totalPartners}
+          nearbyPartners={stats.nearbyPartners}
+          onLocationPress={() => console.log('Location pressed')}
+          onNotificationPress={() => console.log('Notification pressed')}
         />
 
-        {/* Barre de recherche */}
-        <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color={Colors.text.secondary} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Rechercher un partenaire..."
-              placeholderTextColor={Colors.text.secondary}
-              value={searchQuery}
-              onChangeText={handleSearch}
-            />
-          </View>
+        {/* Barre de recherche améliorée */}
+        <SearchBar
+          value={searchQuery}
+          onChangeText={handleSearch}
+          onFilterPress={handleFilterPress}
+          showFilterButton={true}
+        />
 
         {/* Contenu principal */}
-        <View style={styles.content}>
+        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
           {/* Toggle Liste/Carte */}
           <ViewToggle
             selectedMode={viewMode}
@@ -185,23 +218,34 @@ export default function PartnersScreen() {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.partnersListContent}
             >
-              {partners.map((partner) => (
-                <PartnerCard
-                  key={partner.id}
-                  partner={partner}
-                  style={styles.partnerCard}
-                />
-              ))}
+              {filteredPartners.length > 0 ? (
+                filteredPartners.map((partner) => (
+                  <PartnerCard
+                    key={partner.id}
+                    partner={partner}
+                    onPress={() => handlePartnerSelect(partner)}
+                    style={styles.partnerCard}
+                  />
+                ))
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons name="search" size={48} color={Colors.text.secondary} />
+                  <Text style={styles.emptyStateTitle}>Aucun partenaire trouvé</Text>
+                  <Text style={styles.emptyStateText}>
+                    Essayez de modifier vos critères de recherche
+                  </Text>
+                </View>
+              )}
             </ScrollView>
           ) : (
             /* Carte interactive */
             <RealMapsView
-              partners={partners}
+              partners={filteredPartners}
               onPartnerSelect={handlePartnerSelect}
               style={styles.mapView}
             />
           )}
-        </View>
+        </Animated.View>
 
         {/* Modal des détails du partenaire */}
         <Modal
@@ -325,19 +369,24 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.semibold as any,
     color: Colors.accent.orange,
   } as TextStyle,
-  searchContainer: {
-    flexDirection: 'row',
+  emptyState: {
     alignItems: 'center',
-    backgroundColor: Colors.background.card,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.lg,
-    gap: Spacing.sm,
+    justifyContent: 'center',
+    paddingVertical: Spacing.xl * 2,
+    paddingHorizontal: Spacing.lg,
   } as ViewStyle,
-  searchInput: {
-    flex: 1,
-    fontSize: Typography.sizes.base,
+  emptyStateTitle: {
+    fontSize: Typography.sizes.lg,
+    fontWeight: '600',
     color: Colors.text.primary,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
+  } as TextStyle,
+  emptyStateText: {
+    fontSize: Typography.sizes.base,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: 22,
   } as TextStyle,
   content: {
     flex: 1,

@@ -1,6 +1,6 @@
 import { AnimatedButton } from '@/components/animated-button';
 import { NavigationTransition } from '@/components/navigation-transition';
-import { SharedHeader } from '@/components/shared-header';
+import { HomeHeader } from '@/components/headers/home-header';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
 import { useAuth } from '@/hooks/use-auth';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,7 +13,6 @@ import {
     View,
     ViewStyle,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
   const { user } = useAuth();
@@ -29,18 +28,14 @@ export default function HomeScreen() {
 
   return (
     <NavigationTransition>
-      <SafeAreaView style={styles.container}>
-        <View style={styles.container}>
-          <SharedHeader
-            title={user ? `Bonjour, ${user.email.split('@')[0]} ✨` : 'Bonjour ✨'}
-            subtitle="Prêt•e à économiser aujourd'hui ?"
-            onPartnerModePress={handlePartnerMode}
-            onSearchPress={() => console.log('Recherche')}
-            balanceEuros="47,80 €"
-            variant="home"
-            gradientColors={['#8B5CF6', '#2563EB'] as const}
-            showPartnerMode={false}
-          />
+      <View style={styles.container}>
+        <HomeHeader
+          title={user ? `Bonjour, ${user.email.split('@')[0]} ✨` : 'Bonjour ✨'}
+          subtitle="Prêt•e à économiser aujourd'hui ?"
+          balanceEuros="47,80 €"
+          onNotificationPress={() => console.log('Notifications')}
+          onProfilePress={() => console.log('Profil')}
+        />
 
         <ScrollView 
           style={styles.scrollContainer}
@@ -118,8 +113,7 @@ export default function HomeScreen() {
             </View>
           </View>
         </ScrollView>
-        </View>
-      </SafeAreaView>
+      </View>
     </NavigationTransition>
   );
 }

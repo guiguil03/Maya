@@ -2,12 +2,13 @@ import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
-  StyleSheet,
-  Text,
-  TextStyle,
-  TouchableOpacity,
-  View,
-  ViewStyle,
+    Animated,
+    StyleSheet,
+    Text,
+    TextStyle,
+    TouchableOpacity,
+    View,
+    ViewStyle,
 } from 'react-native';
 import { PartnerPromotion } from './partner-promotion';
 
@@ -36,6 +37,22 @@ interface PartnerCardProps {
 }
 
 export function PartnerCard({ partner, onPress, style }: PartnerCardProps) {
+  const scaleAnim = React.useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.98,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+  };
+
   const handleGoThere = () => {
     console.log(`Aller à ${partner.name}`);
   };
@@ -45,38 +62,65 @@ export function PartnerCard({ partner, onPress, style }: PartnerCardProps) {
   };
 
   return (
-    <TouchableOpacity style={[styles.card, style]} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.imageContainer}>
-        <View style={styles.imagePlaceholder}>
-          <Text style={styles.imageText}>{partner.image}</Text>
-        </View>
-      </View>
-
-      <View style={styles.content}>
+    <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, style]}>
+      <TouchableOpacity 
+        style={styles.card} 
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={0.9}
+      >
+        {/* Header avec image et rating */}
         <View style={styles.header}>
-          <Text style={styles.name}>{partner.name}</Text>
-          <View style={styles.rating}>
-            <Ionicons name="star" size={16} color={Colors.accent.gold} />
-            <Text style={styles.ratingText}>{partner.rating}</Text>
+          <View style={styles.imageContainer}>
+            <View style={styles.imagePlaceholder}>
+              <Text style={styles.imageText}>{partner.image}</Text>
+            </View>
+            {partner.promotion?.isActive && (
+              <View style={styles.promotionBadge}>
+                <Text style={styles.promotionBadgeText}>-{partner.promotion.discount}</Text>
+              </View>
+            )}
+          </View>
+          
+          <View style={styles.headerInfo}>
+            <View style={styles.titleRow}>
+              <Text style={styles.name} numberOfLines={1}>{partner.name}</Text>
+              <View style={styles.rating}>
+                <Ionicons name="star" size={14} color={Colors.accent.gold} />
+                <Text style={styles.ratingText}>{partner.rating}</Text>
+              </View>
+            </View>
+            
+            <Text style={styles.category}>{partner.category}</Text>
           </View>
         </View>
 
-        <Text style={styles.description}>{partner.description}</Text>
+        {/* Description */}
+        <Text style={styles.description} numberOfLines={2}>
+          {partner.description}
+        </Text>
 
-        <View style={styles.location}>
-          <Ionicons name="location" size={14} color={Colors.text.secondary} />
-          <Text style={styles.address}>{partner.address}</Text>
+        {/* Location et distance */}
+        <View style={styles.locationRow}>
+          <View style={styles.location}>
+            <Ionicons name="location" size={14} color={Colors.text.secondary} />
+            <Text style={styles.address} numberOfLines={1}>{partner.address}</Text>
+          </View>
           <Text style={styles.distance}>{partner.distance} km</Text>
         </View>
 
+        {/* Status et actions */}
         <View style={styles.footer}>
           <View style={styles.statusContainer}>
-            <View style={[styles.statusChip, partner.isOpen ? styles.statusOpen : styles.statusClosed]}>
-              <Ionicons 
-                name="time" 
-                size={12} 
-                color={partner.isOpen ? Colors.status.success : Colors.status.error} 
-              />
+            <View style={[
+              styles.statusChip, 
+              partner.isOpen ? styles.statusOpen : styles.statusClosed
+            ]}>
+              <View style={[
+                styles.statusDot,
+                { backgroundColor: partner.isOpen ? Colors.status.success : Colors.status.error }
+              ]} />
               <Text style={[
                 styles.statusText,
                 { color: partner.isOpen ? Colors.status.success : Colors.status.error }
@@ -84,17 +128,18 @@ export function PartnerCard({ partner, onPress, style }: PartnerCardProps) {
                 {partner.isOpen ? 'Ouvert' : 'Fermé'}
               </Text>
               {partner.isOpen && (
-                <Text style={styles.closingTime}>{partner.closingTime}</Text>
+                <Text style={styles.closingTime}>• {partner.closingTime}</Text>
               )}
             </View>
           </View>
 
           <TouchableOpacity style={styles.goButton} onPress={handleGoThere}>
-            <Ionicons name="location" size={16} color={Colors.text.light} />
+            <Ionicons name="navigate" size={16} color={Colors.text.light} />
             <Text style={styles.goButtonText}>Y aller</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Promotion */}
         {partner.promotion && partner.promotion.isActive && (
           <PartnerPromotion
             promotion={partner.promotion}
@@ -102,8 +147,8 @@ export function PartnerCard({ partner, onPress, style }: PartnerCardProps) {
             style={styles.promotion}
           />
         )}
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -111,30 +156,55 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.background.card,
     borderRadius: BorderRadius.xl,
-    padding: Spacing.md,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
+    ...Shadows.lg,
+    borderWidth: 1,
+    borderColor: Colors.primary[100],
+  } as ViewStyle,
+  header: {
     flexDirection: 'row',
-    ...Shadows.md,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
   } as ViewStyle,
   imageContainer: {
+    position: 'relative',
     marginRight: Spacing.md,
   } as ViewStyle,
   imagePlaceholder: {
-    width: 60,
-    height: 60,
-    backgroundColor: Colors.primary[100],
-    borderRadius: BorderRadius.lg,
+    width: 70,
+    height: 70,
+    backgroundColor: Colors.primary[50],
+    borderRadius: BorderRadius.xl,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.primary[200],
   } as ViewStyle,
   imageText: {
-    fontSize: 24,
+    fontSize: 28,
     color: Colors.text.primary,
   } as TextStyle,
-  content: {
-    flex: 1,
+  promotionBadge: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: Colors.status.success,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 2,
+    minWidth: 40,
+    alignItems: 'center',
   } as ViewStyle,
-  header: {
+  promotionBadgeText: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: '700',
+    color: Colors.text.light,
+  } as TextStyle,
+  headerInfo: {
+    flex: 1,
+    justifyContent: 'space-between',
+  } as ViewStyle,
+  titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
@@ -150,23 +220,38 @@ const styles = StyleSheet.create({
   rating: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: Colors.accent.gold + '20',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.md,
     gap: Spacing.xs,
   } as ViewStyle,
   ratingText: {
     fontSize: Typography.sizes.sm,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: Colors.accent.gold,
   } as TextStyle,
-  description: {
+  category: {
     fontSize: Typography.sizes.sm,
     color: Colors.text.secondary,
-    marginBottom: Spacing.xs,
-    lineHeight: 18,
+    fontWeight: '500',
   } as TextStyle,
+  description: {
+    fontSize: Typography.sizes.base,
+    color: Colors.text.secondary,
+    lineHeight: 20,
+    marginBottom: Spacing.md,
+  } as TextStyle,
+  locationRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  } as ViewStyle,
   location: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
+    flex: 1,
     gap: Spacing.xs,
   } as ViewStyle,
   address: {
@@ -177,13 +262,16 @@ const styles = StyleSheet.create({
   distance: {
     fontSize: Typography.sizes.sm,
     fontWeight: '600',
-    color: Colors.text.secondary,
+    color: Colors.primary[600],
+    backgroundColor: Colors.primary[50],
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.md,
   } as TextStyle,
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.xs,
   } as ViewStyle,
   statusContainer: {
     flex: 1,
@@ -191,17 +279,22 @@ const styles = StyleSheet.create({
   statusChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.lg,
     alignSelf: 'flex-start',
     gap: Spacing.xs,
   } as ViewStyle,
   statusOpen: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: Colors.status.success + '15',
   } as ViewStyle,
   statusClosed: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: Colors.status.error + '15',
+  } as ViewStyle,
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   } as ViewStyle,
   statusText: {
     fontSize: Typography.sizes.sm,
@@ -210,16 +303,20 @@ const styles = StyleSheet.create({
   closingTime: {
     fontSize: Typography.sizes.sm,
     color: Colors.text.secondary,
-    marginLeft: Spacing.xs,
   } as TextStyle,
   goButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.primary[600],
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.xl,
     gap: Spacing.xs,
+    shadowColor: Colors.primary[600],
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   } as ViewStyle,
   goButtonText: {
     fontSize: Typography.sizes.sm,
@@ -227,6 +324,6 @@ const styles = StyleSheet.create({
     color: Colors.text.light,
   } as TextStyle,
   promotion: {
-    marginTop: Spacing.sm,
+    marginTop: Spacing.md,
   } as ViewStyle,
 });

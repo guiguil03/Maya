@@ -1,5 +1,5 @@
 import { NavigationTransition } from '@/components/navigation-transition';
-import { SharedHeader } from '@/components/shared-header';
+import { SubscriptionHeader } from '@/components/headers/subscription-header';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,14 +27,11 @@ export default function SubscriptionScreen() {
     <NavigationTransition>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.container}>
-          <SharedHeader
+          <SubscriptionHeader
             title="Choisissez votre plan"
             subtitle="Économisez 10% partout avec Maya"
-            onPartnerModePress={handlePartnerMode}
-            showFamilyBadge={false}
-            showPartnerMode={false}
-            variant="subscription"
-            gradientColors={['#6366F1', '#EC4899'] as const}
+            currentPlan="Duo"
+            onNotificationPress={() => console.log('Notifications')}
           />
 
           <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

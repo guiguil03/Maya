@@ -5,11 +5,27 @@ import { OnboardingContentCard } from '@/components/onboarding-content-card';
 import { OnboardingScreen } from '@/components/onboarding-screen';
 import { PaginationDots } from '@/components/pagination-dots';
 import { Colors } from '@/constants/design-system';
-import { router } from 'expo-router';
-import React from 'react';
+import { useAuth } from '@/hooks/use-auth';
+import { Redirect, router } from 'expo-router';
+import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+
 export default function Index() {
+  const { user, loading } = useAuth();
+
+  // Rediriger automatiquement si l'utilisateur est connecté
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace('/(tabs)/home');
+    }
+  }, [user, loading]);
+
+  // Si l'utilisateur est connecté, rediriger
+  if (!loading && user) {
+    return <Redirect href="/(tabs)/home" />;
+  }
+
   const handleSkip = () => {
     router.push('/connexion/login');
   };

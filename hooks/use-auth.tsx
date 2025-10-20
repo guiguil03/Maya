@@ -1,7 +1,7 @@
 import { AuthService, LoginRequest, PublicUser, RegisterRequest } from '@/services/auth.service';
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
-type AuthUser = PublicUser;
+type AuthUser = PublicUser & { role?: string };
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -9,6 +9,7 @@ type AuthContextValue = {
   signIn: (params: LoginRequest) => Promise<void>;
   signUp: (params: RegisterRequest) => Promise<void>;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -17,16 +18,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true); // Commencer par true pour charger l'utilisateur
 
-  // Charger l'utilisateur au démarrage
+  // Charger l'utilisateur au démarrage avec persistance
   React.useEffect(() => {
     const loadUser = async () => {
       try {
-        const currentUser = await AuthService.getCurrentUser();
         const isAuth = await AuthService.isAuthenticated();
         
-        if (currentUser && isAuth) {
-          setUser(currentUser);
-          console.log('👤 Utilisateur chargé au démarrage:', currentUser.email);
+        if (isAuth) {
+          // Essayer de récupérer les infos complètes depuis l'API
+          try {
+            const userInfo = await AuthService.getCurrentUserInfo();
+            setUser(userInfo);
+            console.log('👤 Utilisateur chargé depuis l\'API:', userInfo.email);
+          } catch (apiError) {
+            // Si l'API échoue, utiliser les données locales
+            console.log('⚠️ API indisponible, utilisation des données locales');
+            const currentUser = await AuthService.getCurrentUser();
+            if (currentUser) {
+              setUser(currentUser);
+              console.log('👤 Utilisateur chargé depuis le stockage local:', currentUser.email);
+            } else {
+              setUser(null);
+            }
+          }
         } else {
           setUser(null);
           console.log('❌ Aucun utilisateur connecté');
@@ -48,8 +62,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!loginData.email || !loginData.password) {
         throw new Error('MISSING_CREDENTIALS');
       }
-      const authenticatedUser = await AuthService.signIn(loginData);
-      setUser(authenticatedUser);
+      await AuthService.signIn(loginData);
+      
+      // Récupérer les infos complètes de l'utilisateur après connexion
+      const userInfo = await AuthService.getCurrentUserInfo();
+      setUser(userInfo);
+      console.log('✅ Connexion réussie:', userInfo.email);
     } catch (error) {
       setUser(null);
       throw error;
@@ -88,9 +106,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      if (user) {
+        const userInfo = await AuthService.getCurrentUserInfo();
+        setUser(userInfo);
+        console.log('🔄 Utilisateur rafraîchi:', userInfo.email);
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors du rafraîchissement:', error);
+    }
+  }, [user]);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, loading, signIn, signUp, signOut }),
-    [user, loading, signIn, signUp, signOut]
+    () => ({ user, loading, signIn, signUp, signOut, refreshUser }),
+    [user, loading, signIn, signUp, signOut, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
