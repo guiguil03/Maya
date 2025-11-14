@@ -1,20 +1,19 @@
 import { AnimatedButton } from '@/components/common/animated-button';
 import { NavigationTransition } from '@/components/common/navigation-transition';
-import { NeoCard } from '@/components/neo/NeoCard';
-import { BorderRadius, Colors, Spacing, Typography } from '@/constants/design-system';
+import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
 import { useAuth } from '@/hooks/use-auth';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
-  StyleSheet,
-  Text,
-  TextInput,
-  TextStyle,
-  TouchableOpacity,
-  View,
-  ViewStyle,
+    StyleSheet,
+    Text,
+    TextInput,
+    TextStyle,
+    TouchableOpacity,
+    View,
+    ViewStyle
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -65,16 +64,16 @@ export default function LoginScreen() {
   return (
     <NavigationTransition direction="right">
       <LinearGradient
-        colors={['#450A1D', '#120A18']}
+        colors={Colors.gradients.primary}
         start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
+        end={{ x: 1, y: 1 }}
         style={styles.container}
       >
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
               <View style={styles.backButtonInner}>
-                <Ionicons name="arrow-back" size={20} color={Colors.text.light} />
+                <Ionicons name="arrow-back" size={20} color="white" />
                 <Text style={styles.headerText}>Retour</Text>
               </View>
             </TouchableOpacity>
@@ -86,30 +85,27 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.content}>
-            <NeoCard variant="glass" style={styles.card}>
+            <View style={styles.card}>
               <Text style={styles.title}>Connexion</Text>
-              <Text style={styles.subtitle}>Accédez à votre espace d’économies en un instant</Text>
+              <Text style={styles.subtitle}>Connectez-vous pour accéder à vos économies</Text>
 
+              {/* Message d'erreur global */}
               {errorMessage ? (
                 <View style={styles.errorBanner}>
-                  <Ionicons name="alert-circle" size={20} color={Colors.status.error} />
+                  <Ionicons name="alert-circle" size={20} color="#DC2626" />
                   <Text style={styles.errorBannerText}>{errorMessage}</Text>
                 </View>
               ) : null}
 
+              {/* Connexion sociale désactivée temporairement */}
+
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Email</Text>
                 <View style={[styles.inputWrapper, emailError ? styles.inputError : null]}>
-                  <Ionicons
-                    name="mail"
-                    size={18}
-                    color={emailError ? Colors.status.error : Colors.text.muted}
-                    style={styles.inputIcon as any}
-                  />
+                  <Ionicons name="mail" size={20} color={emailError ? "#DC2626" : "#9CA3AF"} style={styles.inputIcon as any} />
                   <TextInput
                     style={styles.input}
                     placeholder="votre@email.com"
-                    placeholderTextColor={Colors.text.muted}
                     value={email}
                     onChangeText={(text) => {
                       setEmail(text);
@@ -120,22 +116,18 @@ export default function LoginScreen() {
                     autoCapitalize="none"
                   />
                 </View>
-                {emailError ? <Text style={styles.fieldError}>{emailError}</Text> : null}
+                {emailError ? (
+                  <Text style={styles.fieldError}>{emailError}</Text>
+                ) : null}
               </View>
 
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Mot de passe</Text>
                 <View style={[styles.inputWrapper, passwordError ? styles.inputError : null]}>
-                  <Ionicons
-                    name="lock-closed"
-                    size={18}
-                    color={passwordError ? Colors.status.error : Colors.text.muted}
-                    style={styles.inputIcon as any}
-                  />
+                  <Ionicons name="lock-closed" size={20} color={passwordError ? "#DC2626" : "#9CA3AF"} style={styles.inputIcon as any} />
                   <TextInput
                     style={styles.input}
                     placeholder="••••••••"
-                    placeholderTextColor={Colors.text.muted}
                     value={password}
                     onChangeText={(text) => {
                       setPassword(text);
@@ -145,14 +137,12 @@ export default function LoginScreen() {
                     secureTextEntry={!showPassword}
                   />
                   <TouchableOpacity onPress={() => setShowPassword((v) => !v)}>
-                    <Ionicons
-                      name={showPassword ? 'eye-off' : 'eye'}
-                      size={18}
-                      color={Colors.text.muted}
-                    />
+                    <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color="#9CA3AF" />
                   </TouchableOpacity>
                 </View>
-                {passwordError ? <Text style={styles.fieldError}>{passwordError}</Text> : null}
+                {passwordError ? (
+                  <Text style={styles.fieldError}>{passwordError}</Text>
+                ) : null}
               </View>
 
               <AnimatedButton
@@ -163,7 +153,7 @@ export default function LoginScreen() {
                 variant="solid"
               />
 
-              <TouchableOpacity
+              <TouchableOpacity 
                 style={styles.forgotPassword}
                 onPress={() => router.push('/connexion/forgot-password')}
               >
@@ -176,13 +166,15 @@ export default function LoginScreen() {
                 <View style={styles.dividerLine} />
               </View>
 
+             
+
               <View style={styles.signupContainer}>
                 <Text style={styles.signupText}>Pas encore de compte ? </Text>
                 <TouchableOpacity onPress={() => router.push('/connexion/signup')}>
                   <Text style={styles.signupLink}>S’inscrire</Text>
                 </TouchableOpacity>
               </View>
-            </NeoCard>
+            </View>
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -250,8 +242,7 @@ const styles = StyleSheet.create<LoginStyles>({
     borderRadius: BorderRadius['2xl'],
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    ...Shadows.sm,
   },
   backButtonInner: {
     flexDirection: 'row',
@@ -262,7 +253,6 @@ const styles = StyleSheet.create<LoginStyles>({
     fontSize: Typography.sizes.sm,
     fontWeight: Typography.weights.semibold,
     marginLeft: Spacing.xs,
-    letterSpacing: Typography.letterSpacing.wider,
   },
   logoContainer: {
     alignItems: 'center',
@@ -288,26 +278,29 @@ const styles = StyleSheet.create<LoginStyles>({
   },
   content: {
     flex: 1,
-    position: 'relative',
-    top: 50,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
   },
   card: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    backgroundColor: Colors.background.card,
+    borderRadius: BorderRadius['3xl'],
+    paddingHorizontal: Spacing['2xl'],
+    paddingVertical: Spacing.lg,
+    marginVertical: Spacing.lg,
+    ...Shadows.xl,
   },
   title: {
-    fontSize: Typography.sizes['2xl'],
-    fontWeight: Typography.weights.semibold as any,
-    color: Colors.text.light,
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: 'black',
     textAlign: 'center',
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: Typography.sizes.base,
-    color: Colors.text.secondary,
+    fontSize: 16,
+    color: '#6B7280',
     textAlign: 'center',
+    marginBottom: 30,
   },
   socialButtons: {
     flexDirection: 'row',
@@ -324,14 +317,14 @@ const styles = StyleSheet.create<LoginStyles>({
     height: 44,
     paddingHorizontal: 14,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.background.card,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: '#E5E7EB',
   },
   socialButtonText: {
-    color: Colors.text.secondary,
-    fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.medium as any,
+    color: '#6B7280',
+    fontSize: 14,
+    fontWeight: '500',
   },
   divider: {
     flexDirection: 'row',
@@ -341,53 +334,53 @@ const styles = StyleSheet.create<LoginStyles>({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#E5E7EB',
   },
   dividerText: {
-    marginHorizontal: Spacing.md,
-    color: Colors.text.muted,
-    fontSize: Typography.sizes.sm,
+    marginHorizontal: 16,
+    color: '#9CA3AF',
+    fontSize: 14,
   },
   inputContainer: {
     marginBottom: 20,
   },
   inputLabel: {
-    fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.medium as any,
-    color: Colors.text.secondary,
-    marginBottom: Spacing.xs,
-    letterSpacing: Typography.letterSpacing.wide,
+    fontSize: 16,
+    fontWeight: '500',
+    color: 'black',
+    marginBottom: 8,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    borderRadius: BorderRadius.lg,
-    paddingHorizontal: Spacing.md,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
   },
   inputIcon: {
-    marginRight: Spacing.xs,
+    marginRight: 8,
   },
   input: {
     flex: 1,
-    paddingVertical: Spacing.sm,
-    fontSize: Typography.sizes.base,
-    color: Colors.text.light,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: 'black',
   },
   loginButton: {
-    marginTop: Spacing.md,
+    marginTop: 10,
+    marginBottom: 20,
   },
   skipLoginButton: {
     marginBottom: 20,
   },
   forgotPassword: {
     alignItems: 'center',
+    marginBottom: 20,
   },
   forgotPasswordText: {
-    color: Colors.text.secondary,
-    fontSize: Typography.sizes.sm,
+    color: '#8B5CF6',
+    fontSize: 14,
   },
   signupContainer: {
     flexDirection: 'row',
@@ -395,38 +388,40 @@ const styles = StyleSheet.create<LoginStyles>({
     alignItems: 'center',
   },
   signupText: {
-    color: Colors.text.secondary,
-    fontSize: Typography.sizes.sm,
+    color: '#6B7280',
+    fontSize: 14,
   },
   signupLink: {
-    color: Colors.accent.rose,
-    fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.semibold as any,
+    color: '#8B5CF6',
+    fontSize: 14,
+    fontWeight: '500',
   },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: 'rgba(255,107,107,0.12)',
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255,107,107,0.35)',
-    padding: Spacing.md,
+    backgroundColor: '#FEE2E2',
+    borderLeftWidth: 4,
+    borderLeftColor: '#DC2626',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+    gap: 10,
   },
   errorBannerText: {
     flex: 1,
-    color: Colors.status.error,
-    fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.medium as any,
+    color: '#991B1B',
+    fontSize: 14,
+    fontWeight: '500',
   },
   inputError: {
-    borderColor: Colors.status.error,
-    backgroundColor: 'rgba(255,107,107,0.08)',
+    borderColor: '#DC2626',
+    borderWidth: 2,
+    backgroundColor: '#FEF2F2',
   },
   fieldError: {
-    color: Colors.status.error,
-    fontSize: Typography.sizes.xs,
-    marginTop: Spacing.xs / 2,
-    marginLeft: Spacing.xs,
+    color: '#DC2626',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
 });

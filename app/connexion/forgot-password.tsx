@@ -132,11 +132,7 @@ const ForgotPasswordScreen: React.FC = () => {
     try {
       await AuthService.resetPassword(code, newPassword, email);
       setSuccessMessage('✅ Mot de passe réinitialisé avec succès !');
-
-      setTimeout(() => {
-        router.replace('/connexion/login');
-      }, 2000);
-
+      setTimeout(() => router.replace('/connexion/login'), 2000);
     } catch (error) {
       console.error('Erreur lors de la réinitialisation:', error);
       setErrorMessage('❌ Échec de la réinitialisation');

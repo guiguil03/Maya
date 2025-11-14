@@ -11,7 +11,7 @@ import { StyleSheet, View } from 'react-native';
 
 export default function Onboarding2Screen() {
   const handleSkip = () => {
-    router.push('/connexion/login' as const);
+    router.push('/connexion/login');
   };
 
   const handleNext = () => {
@@ -25,14 +25,14 @@ export default function Onboarding2Screen() {
           icon={
             <FeatureIcon
               name="shield-checkmark"
-              color={Colors.accent.cyan}
-              backgroundColor="rgba(45, 217, 255, 0.18)"
+              color={Colors.accent.emerald}
+              backgroundColor="rgba(16, 185, 129, 0.2)"
               animated={true}
             />
           }
           title="Sécurisé et simple"
           description="Votre QR code unique vous garantit des paiements sécurisés et rapides"
-          gradientColors={Colors.gradients.aurora as any}
+          gradientColors={[...Colors.gradients.success]}
         />
         
         <View style={styles.paginationContainer}>
