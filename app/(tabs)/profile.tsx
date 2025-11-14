@@ -1,25 +1,21 @@
 import { DebugUsersViewer } from '@/components/debug-users-viewer';
 import { NavigationTransition } from '@/components/common/navigation-transition';
-import { NeoCard } from '@/components/neo/NeoCard';
-import { NeoChip } from '@/components/neo/NeoChip';
-import { BorderRadius, Colors, Spacing, Typography } from '@/constants/design-system';
+import { ProfileHeader } from '@/components/headers/profile-header';
+import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
 import { useAuth } from '@/hooks/use-auth';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Switch,
-  Text,
-  TextStyle,
-  TouchableOpacity,
-  View,
-  ViewStyle,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextStyle,
+    TouchableOpacity,
+    View,
+    ViewStyle
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
   const [pushEnabled, setPushEnabled] = useState(true);
@@ -27,69 +23,9 @@ export default function ProfileScreen() {
   const [faceId, setFaceId] = useState(true);
   const [showDebugUsers, setShowDebugUsers] = useState(false);
   const { signOut, user } = useAuth();
-
-  const initials = useMemo(() => {
-    const first = user?.firstName?.charAt(0);
-    const last = user?.lastName?.charAt(0);
-    if (first || last) {
-      return `${first ?? ''}${last ?? ''}`.toUpperCase();
-    }
-    return user?.email?.charAt(0)?.toUpperCase() ?? 'U';
-  }, [user?.firstName, user?.lastName, user?.email]);
-
-  const displayName = useMemo(() => {
-    const full = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
-    return full.length > 0 ? full : user?.email?.split('@')[0] ?? 'Utilisateur';
-  }, [user?.firstName, user?.lastName, user?.email]);
-
-  const roleLabel = useMemo(() => {
-    const rawRole = (user as any)?.role ?? (user as any)?.Role;
-    if (typeof rawRole === 'string' && rawRole.length > 0) {
-      return rawRole;
-    }
-    if (user?.email?.toLowerCase().includes('partner')) {
-      return 'Partner';
-    }
-    return 'Membre';
-  }, [user]);
-
-  const lastLoginLabel = useMemo(() => {
-    if (user?.lastLoginAt) {
-      try {
-        return new Date(user.lastLoginAt).toLocaleString('fr-FR', {
-          day: 'numeric',
-          month: 'short',
-          hour: '2-digit',
-          minute: '2-digit',
-        });
-      } catch {
-        return user.lastLoginAt;
-      }
-    }
-    return 'Jamais';
-  }, [user?.lastLoginAt]);
-
-  const accountStatusLabel = useMemo(() => {
-    if (user?.status === undefined || user?.status === null) {
-      return 'Actif';
-    }
-    return user.status === 0 ? 'Actif' : 'Inactif';
-  }, [user?.status]);
-
-  const cityLabel = useMemo(() => {
-    const city = (user as any)?.address?.city;
-    return city && city.length > 0 ? city : 'Non renseigné';
-  }, [user]);
-
-  const userIdShort = useMemo(() => {
-    if (user?.id) {
-      return `${user.id.slice(0, 6)}…`;
-    }
-    return '—';
-  }, [user?.id]);
-
-  const heroGradient = ['#4C0F22', '#1A112A'] as const;
-
+  const handlePartnerMode = () => {
+    console.log('Mode partenaire');
+  };
   const handleLogout = async () => {
     await signOut();
     router.replace('/connexion/login');
@@ -97,440 +33,338 @@ export default function ProfileScreen() {
 
   return (
     <NavigationTransition>
-      <View style={styles.screen}>
-        <LinearGradient
-          colors={['#450A1D', '#120A18']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
+      <View style={styles.container}>
+        <ProfileHeader
+          title="Mon Profil"
+          subtitle="Gérez votre compte"
+          userEmail={user?.email}
+          onSettingsPress={() => console.log('Settings')}
+          onNotificationPress={() => console.log('Notifications')}
         />
-        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-          <StatusBar barStyle="light-content" />
-          <ScrollView
-            contentContainerStyle={styles.content}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            <NeoCard gradient={heroGradient} style={styles.profileHero}>
-              <View style={styles.heroHeader}>
-                <View style={styles.heroIdentity}>
-                  <View style={styles.heroAvatar}>
-                    <Text style={styles.heroInitials}>{initials}</Text>
-                  </View>
-                  <View style={styles.heroInfo}>
-                    <Text style={styles.heroName}>{displayName}</Text>
-                    <Text style={styles.heroEmail}>{user?.email ?? '—'}</Text>
-                    <View style={styles.heroMetaRow}>
-                      <NeoChip label={roleLabel} tone="positive" />
-                      <View style={styles.heroSeparatorDot} />
-                      <Text style={styles.heroMetaText}>Dernière connexion {lastLoginLabel}</Text>
-                    </View>
-                  </View>
+
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={{ paddingBottom: Spacing['2xl'] }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          {/* Carte Profil */}
+          <View style={styles.profileCard}>
+            <View style={styles.avatarBadge}>
+              <Text style={styles.avatarInitials}>
+                {user ? `${user.firstName?.charAt(0) || ''}${user.lastName?.charAt(0) || ''}`.toUpperCase() : 'U'}
+              </Text>
+            </View>
+            <View style={{ flex: 1 } as ViewStyle}>
+              <Text style={styles.userName}>
+                {user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Utilisateur' : 'Utilisateur'}
+              </Text>
+              <Text style={styles.userEmail}>{user?.email || 'Non connecté'}</Text>
+              <View style={styles.userMetaRow}>
+                <View style={styles.familyChip}>
+                  <Text style={styles.familyChipText}>Famille</Text>
                 </View>
-                <View style={styles.heroActions}>
-                  <TouchableOpacity style={styles.iconButton} onPress={() => console.log('Notifications')}>
-                    <Ionicons name="notifications-outline" size={18} color="#FFFFFF" />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.iconButton} onPress={() => console.log('Paramètres')}>
-                    <Ionicons name="settings-outline" size={18} color="#FFFFFF" />
-                  </TouchableOpacity>
+                <Text style={styles.userMetaText}>Expire le 10/02/2025</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Abonnement */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Abonnement</Text>
+              <TouchableOpacity style={styles.ghostButton}>
+                <Text style={styles.ghostButtonText}>Modifier</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.planRow}>
+              <View style={{ flex: 1 } as ViewStyle}>
+                <Text style={styles.planName}>Plan Famille</Text>
+                <Text style={styles.planDetails}>7€/mois • Renouvelé automatiquement</Text>
+              </View>
+              <View style={styles.statusChipActive}>
+                <Text style={styles.statusChipText}>Actif</Text>
+              </View>
+            </View>
+            <TouchableOpacity>
+              <Text style={styles.cancelLink}>Résilier l’abonnement</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Moyens de paiement */}
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Moyens de paiement</Text>
+            <TouchableOpacity style={styles.paymentItem}>
+              <Ionicons name="card" size={18} color={Colors.text.primary} />
+              <View style={{ flex: 1, marginLeft: Spacing.md } as ViewStyle}>
+                <Text style={styles.paymentTitle}>Visa •••• 4242</Text>
+                <View style={styles.inlineRow}>
+                  <View style={styles.defaultChip}><Text style={styles.defaultChipText}>Par défaut</Text></View>
                 </View>
               </View>
+              <Ionicons name="chevron-forward" size={18} color={Colors.text.muted} />
+            </TouchableOpacity>
 
-              <View style={styles.heroStatsRow}>
-                <View style={styles.heroStat}>
-                  <Text style={styles.heroStatLabel}>Statut</Text>
-                  <Text style={styles.heroStatValue}>{accountStatusLabel}</Text>
-                </View>
-                <View style={styles.heroDivider} />
-                <View style={styles.heroStat}>
-                  <Text style={styles.heroStatLabel}>Ville</Text>
-                  <Text style={styles.heroStatValue}>{cityLabel}</Text>
-                </View>
-                <View style={styles.heroDivider} />
-                <View style={styles.heroStat}>
-                  <Text style={styles.heroStatLabel}>ID</Text>
-                  <Text style={styles.heroStatValue}>{userIdShort}</Text>
-                </View>
+            <TouchableOpacity style={styles.paymentItem}>
+              <Ionicons name="logo-paypal" size={18} color={Colors.text.primary} />
+              <View style={{ flex: 1, marginLeft: Spacing.md } as ViewStyle}>
+                <Text style={styles.paymentTitle}>PayPal</Text>
+                <Text style={styles.paymentSubtitle}>sarah.martinez@email.com</Text>
               </View>
-            </NeoCard>
+              <Ionicons name="chevron-forward" size={18} color={Colors.text.muted} />
+            </TouchableOpacity>
+          </View>
 
-            <NeoCard variant="glass" style={styles.sectionCard}>
-              <View style={styles.sectionHeader}>
-                <View>
-                  <Text style={styles.sectionTitle}>Abonnement</Text>
-                  <Text style={styles.sectionSubtitle}>Gestion de votre offre partenaire</Text>
-                </View>
-                <TouchableOpacity style={styles.textButton} onPress={() => console.log('Gestion abonnement')}>
-                  <Text style={styles.textButtonLabel}>Gérer</Text>
-                </TouchableOpacity>
+          {/* Paramètres */}
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Paramètres</Text>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingTextCol}>
+                <Text style={styles.settingTitle}>Notifications push</Text>
+                <Text style={styles.settingSubtitle}>Offres et alertes</Text>
               </View>
-              <View style={styles.subscriptionRow}>
-                <View>
-                  <Text style={styles.subscriptionPlan}>Plan Partenaire</Text>
-                  <Text style={styles.subscriptionMeta}>Renouvellement automatique</Text>
-                </View>
-                <View style={styles.statusBadge}>
-                  <Ionicons name="checkmark-circle" size={16} color={Colors.status.success} />
-                  <Text style={styles.statusBadgeText}>Actif</Text>
-                </View>
+              <Switch value={pushEnabled} onValueChange={setPushEnabled} />
+            </View>
+
+            <View style={styles.separator} />
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingTextCol}>
+                <Text style={styles.settingTitle}>Mode sombre</Text>
+                <Text style={styles.settingSubtitle}>Interface sombre</Text>
               </View>
-            </NeoCard>
+              <Switch value={darkMode} onValueChange={setDarkMode} />
+            </View>
 
-            <NeoCard variant="glass" style={styles.sectionCard}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Moyens de paiement</Text>
-                <TouchableOpacity style={styles.textButton} onPress={() => console.log('Ajouter moyen de paiement')}>
-                  <Text style={styles.textButtonLabel}>Ajouter</Text>
-                </TouchableOpacity>
+            <View style={styles.separator} />
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingTextCol}>
+                <Text style={styles.settingTitle}>Face ID</Text>
+                <Text style={styles.settingSubtitle}>Connexion biométrique</Text>
               </View>
-              <View style={styles.paymentList}>
-                <TouchableOpacity style={styles.paymentItem} activeOpacity={0.8}>
-                  <View style={styles.menuIconBadge}>
-                    <Ionicons name="card" size={18} color={Colors.accent.cyan} />
-                  </View>
-                  <View style={styles.paymentInfo}>
-                    <Text style={styles.paymentTitle}>Visa •••• 4242</Text>
-                    <Text style={styles.paymentSubtitle}>Expire 08/26</Text>
-                    <View style={styles.inlineRow}>
-                      <View style={styles.defaultChip}>
-                        <Text style={styles.defaultChipText}>Par défaut</Text>
-                      </View>
-                    </View>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={Colors.text.muted} />
-                </TouchableOpacity>
+              <Switch value={faceId} onValueChange={setFaceId} />
+            </View>
+          </View>
 
-                <TouchableOpacity style={styles.paymentItem} activeOpacity={0.8}>
-                  <View style={styles.menuIconBadge}>
-                    <Ionicons name="logo-paypal" size={18} color={Colors.accent.rose} />
-                  </View>
-                  <View style={styles.paymentInfo}>
-                    <Text style={styles.paymentTitle}>PayPal</Text>
-                    <Text style={styles.paymentSubtitle}>Connecté</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={Colors.text.muted} />
-                </TouchableOpacity>
-              </View>
-            </NeoCard>
+          {/* Liens rapides */}
+          <View style={styles.menuSection}>
+            <TouchableOpacity style={styles.menuItem}>
+              <Ionicons name="wallet-outline" size={22} color={Colors.text.primary} />
+              <Text style={styles.menuText}>Moyens de paiement</Text>
+              <Ionicons name="chevron-forward" size={20} color={Colors.text.muted} />
+            </TouchableOpacity>
 
-            <NeoCard variant="glass" style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Préférences</Text>
-              <View style={styles.settingsList}>
-                <View style={styles.settingRow}>
-                  <View style={styles.settingCopy}>
-                    <Text style={styles.settingTitle}>Notifications push</Text>
-                    <Text style={styles.settingSubtitle}>Offres et alertes personnalisées</Text>
-                  </View>
-                  <Switch
-                    value={pushEnabled}
-                    onValueChange={setPushEnabled}
-                    trackColor={{ false: 'rgba(255,255,255,0.2)', true: Colors.accent.rose }}
-                    thumbColor="#FFFFFF"
-                    ios_backgroundColor="rgba(255,255,255,0.2)"
-                  />
-                </View>
+            <TouchableOpacity style={styles.menuItem}>
+              <Ionicons name="download-outline" size={22} color={Colors.text.primary} />
+              <Text style={styles.menuText}>Factures et reçus</Text>
+              <Ionicons name="chevron-forward" size={20} color={Colors.text.muted} />
+            </TouchableOpacity>
 
-                <View style={styles.settingRow}>
-                  <View style={styles.settingCopy}>
-                    <Text style={styles.settingTitle}>Interface sombre</Text>
-                    <Text style={styles.settingSubtitle}>Synchroniser avec l’appareil</Text>
-                  </View>
-                  <Switch
-                    value={darkMode}
-                    onValueChange={setDarkMode}
-                    trackColor={{ false: 'rgba(255,255,255,0.2)', true: Colors.secondary[500] }}
-                    thumbColor="#FFFFFF"
-                    ios_backgroundColor="rgba(255,255,255,0.2)"
-                  />
-                </View>
+            <TouchableOpacity style={styles.menuItem}>
+              <Ionicons name="notifications-outline" size={22} color={Colors.text.primary} />
+              <Text style={styles.menuText}>Notifications</Text>
+              <Ionicons name="chevron-forward" size={20} color={Colors.text.muted} />
+            </TouchableOpacity>
 
-                <View style={styles.settingRow}>
-                  <View style={styles.settingCopy}>
-                    <Text style={styles.settingTitle}>Face ID</Text>
-                    <Text style={styles.settingSubtitle}>Connexion biométrique</Text>
-                  </View>
-                  <Switch
-                    value={faceId}
-                    onValueChange={setFaceId}
-                    trackColor={{ false: 'rgba(255,255,255,0.2)', true: Colors.accent.cyan }}
-                    thumbColor="#FFFFFF"
-                    ios_backgroundColor="rgba(255,255,255,0.2)"
-                  />
-                </View>
-              </View>
-            </NeoCard>
+            <TouchableOpacity style={styles.menuItem}>
+              <Ionicons name="shield-checkmark-outline" size={22} color={Colors.text.primary} />
+              <Text style={styles.menuText}>Sécurité</Text>
+              <Ionicons name="chevron-forward" size={20} color={Colors.text.muted} />
+            </TouchableOpacity>
 
-            <NeoCard variant="glass" style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Raccourcis</Text>
-              <View style={styles.menuList}>
-                <TouchableOpacity style={styles.menuItem} activeOpacity={0.75}>
-                  <View style={styles.menuIconBadge}>
-                    <Ionicons name="wallet-outline" size={18} color={Colors.accent.cyan} />
-                  </View>
-                  <Text style={styles.menuText}>Moyens de paiement</Text>
-                  <Ionicons name="chevron-forward" size={18} color={Colors.text.muted} />
-                </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem}>
+              <Ionicons name="help-circle-outline" size={22} color={Colors.text.primary} />
+              <Text style={styles.menuText}>Aide et support</Text>
+              <Ionicons name="chevron-forward" size={20} color={Colors.text.muted} />
+            </TouchableOpacity>
 
-                <TouchableOpacity style={styles.menuItem} activeOpacity={0.75}>
-                  <View style={styles.menuIconBadge}>
-                    <Ionicons name="download-outline" size={18} color={Colors.accent.gold} />
-                  </View>
-                  <Text style={styles.menuText}>Factures et reçus</Text>
-                  <Ionicons name="chevron-forward" size={18} color={Colors.text.muted} />
-                </TouchableOpacity>
+            {/* Bouton Debug pour voir tous les utilisateurs */}
+            <TouchableOpacity 
+              style={[styles.menuItem, { backgroundColor: '#F5F3FF', borderBottomWidth: 0 }]} 
+              onPress={() => setShowDebugUsers(true)}
+            >
+              <Ionicons name="bug-outline" size={22} color="#8B5CF6" />
+              <Text style={[styles.menuText, { color: '#8B5CF6' }]}>
+                👤 Voir tous les utilisateurs (Debug)
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color="#8B5CF6" />
+            </TouchableOpacity>
+          </View>
 
-                <TouchableOpacity style={styles.menuItem} activeOpacity={0.75}>
-                  <View style={styles.menuIconBadge}>
-                    <Ionicons name="help-circle-outline" size={18} color={Colors.accent.rose} />
-                  </View>
-                  <Text style={styles.menuText}>Aide et support</Text>
-                  <Ionicons name="chevron-forward" size={18} color={Colors.text.muted} />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.menuItem, styles.menuItemAccent]}
-                  activeOpacity={0.75}
-                  onPress={() => setShowDebugUsers(true)}
-                >
-                  <View style={[styles.menuIconBadge, styles.menuIconAccent]}>
-                    <Ionicons name="bug-outline" size={18} color={Colors.accent.cyan} />
-                  </View>
-                  <Text style={[styles.menuText, styles.menuTextAccent]}>Voir les utilisateurs (debug)</Text>
-                  <Ionicons name="chevron-forward" size={18} color={Colors.accent.cyan} />
-                </TouchableOpacity>
-              </View>
-            </NeoCard>
-
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
-              <Ionicons name="log-out" size={20} color={Colors.status.error} />
+          {/* Déconnexion */}
+          <View style={styles.logoutContainer}>
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} >
+              <Ionicons name="log-out" size={20} color="#EF4444" />
               <Text style={styles.logoutText}>Se déconnecter</Text>
             </TouchableOpacity>
-          </ScrollView>
-        </SafeAreaView>
+          </View>
+        </ScrollView>
 
-        <DebugUsersViewer visible={showDebugUsers} onClose={() => setShowDebugUsers(false)} />
+        {/* Modal de debug des utilisateurs */}
+        <DebugUsersViewer 
+          visible={showDebugUsers} 
+          onClose={() => setShowDebugUsers(false)} 
+        />
       </View>
     </NavigationTransition>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
+  container: {
     flex: 1,
-    backgroundColor: Colors.background.dark,
+    backgroundColor: Colors.background.light,
   } as ViewStyle,
-  safeArea: {
-    flex: 1,
+  header: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.md,
   } as ViewStyle,
+  title: {
+    fontSize: Typography.sizes['3xl'],
+    fontWeight: 'bold' as any,
+    color: Colors.text.primary,
+    marginBottom: Spacing.xs,
+  } as TextStyle,
+  subtitle: {
+    fontSize: Typography.sizes.base,
+    color: Colors.text.secondary,
+  } as TextStyle,
   content: {
+    flex: 1,
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing['4xl'],
-    gap: Spacing['2xl'],
+    paddingTop: Spacing.lg,
+    backgroundColor: Colors.background.light,
   } as ViewStyle,
-  profileHero: {
-    paddingVertical: Spacing['2xl'],
-    paddingHorizontal: Spacing.lg,
-    gap: Spacing['2xl'],
-  } as ViewStyle,
-  heroHeader: {
+  profileCard: {
+    backgroundColor: Colors.background.card,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
     gap: Spacing.lg,
+    marginBottom: Spacing.lg,
+    ...Shadows.md,
   } as ViewStyle,
-  heroIdentity: {
+  avatarBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.primary[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+  } as ViewStyle,
+  avatarInitials: {
+    fontSize: Typography.sizes['2xl'],
+    fontWeight: '700',
+    color: Colors.secondary[600],
+  } as TextStyle,
+  userName: {
+    fontSize: Typography.sizes['2xl'],
+    fontWeight: 'bold' as any,
+    color: Colors.text.primary,
+    marginBottom: Spacing.xs,
+  } as TextStyle,
+  userEmail: {
+    fontSize: Typography.sizes.base,
+    color: Colors.text.secondary,
+    marginBottom: Spacing.sm,
+  } as TextStyle,
+  userMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-    flex: 1,
   } as ViewStyle,
-  heroAvatar: {
-    width: 72,
-    height: 72,
-    borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  familyChip: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.lg,
   } as ViewStyle,
-  heroInitials: {
-    fontSize: Typography.sizes['2xl'],
-    fontWeight: Typography.weights.bold as any,
-    color: Colors.text.light,
+  familyChipText: {
+    color: Colors.secondary[600],
+    fontWeight: '600',
   } as TextStyle,
-  heroInfo: {
-    flex: 1,
-    gap: Spacing.xs,
-  } as ViewStyle,
-  heroName: {
-    fontSize: Typography.sizes['2xl'],
-    fontWeight: Typography.weights.semibold as any,
-    color: Colors.text.light,
-  } as TextStyle,
-  heroEmail: {
-    fontSize: Typography.sizes.sm,
+  userMetaText: {
     color: Colors.text.secondary,
   } as TextStyle,
-  heroMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    flexWrap: 'wrap',
-  } as ViewStyle,
-  heroSeparatorDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.4)',
-  } as ViewStyle,
-  heroMetaText: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.text.secondary,
-  } as TextStyle,
-  heroActions: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  } as ViewStyle,
-  iconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  } as ViewStyle,
-  heroStatsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: BorderRadius['2xl'],
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-  } as ViewStyle,
-  heroStat: {
-    flex: 1,
-    alignItems: 'center',
-    gap: Spacing.xs / 2,
-  } as ViewStyle,
-  heroStatLabel: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.text.muted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  } as TextStyle,
-  heroStatValue: {
-    fontSize: Typography.sizes.lg,
-    fontWeight: Typography.weights.semibold as any,
-    color: Colors.text.light,
-  } as TextStyle,
-  heroDivider: {
-    width: 1,
-    height: 36,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  } as ViewStyle,
   sectionCard: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.lg,
-    gap: Spacing.lg,
+    backgroundColor: Colors.background.card,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    marginBottom: Spacing.lg,
+    ...Shadows.sm,
   } as ViewStyle,
   sectionHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
   } as ViewStyle,
   sectionTitle: {
+    fontSize: Typography.sizes['2xl'],
+    fontWeight: '700',
+    color: Colors.text.primary,
+  } as TextStyle,
+  ghostButton: {
+    backgroundColor: Colors.background.card,
+    borderWidth: 1,
+    borderColor: Colors.primary[200],
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.lg,
+  } as ViewStyle,
+  ghostButtonText: {
+    color: Colors.text.primary,
+    fontWeight: '600',
+  } as TextStyle,
+  planRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+    gap: Spacing.md,
+  } as ViewStyle,
+  planName: {
     fontSize: Typography.sizes.lg,
-    fontWeight: Typography.weights.semibold as any,
-    color: Colors.text.light,
+    fontWeight: '700',
+    color: Colors.text.primary,
   } as TextStyle,
-  sectionSubtitle: {
-    fontSize: Typography.sizes.sm,
-    color: Colors.text.muted,
-    marginTop: Spacing.xs / 2,
-  } as TextStyle,
-  textButton: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-  } as ViewStyle,
-  textButtonLabel: {
-    fontSize: Typography.sizes.sm,
-    color: Colors.text.light,
-    fontWeight: Typography.weights.medium as any,
-  } as TextStyle,
-  subscriptionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  } as ViewStyle,
-  subscriptionPlan: {
+  planDetails: {
     fontSize: Typography.sizes.base,
-    fontWeight: Typography.weights.semibold as any,
-    color: Colors.text.light,
-  } as TextStyle,
-  subscriptionMeta: {
-    fontSize: Typography.sizes.sm,
     color: Colors.text.secondary,
-    marginTop: Spacing.xs / 2,
+    marginTop: 2,
   } as TextStyle,
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    backgroundColor: 'rgba(39,239,161,0.16)',
-    borderRadius: BorderRadius.full,
+  statusChipActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
-    borderWidth: 1,
-    borderColor: 'rgba(39,239,161,0.35)',
+    borderRadius: BorderRadius.lg,
   } as ViewStyle,
-  statusBadgeText: {
-    fontSize: Typography.sizes.sm,
+  statusChipText: {
     color: Colors.status.success,
-    fontWeight: Typography.weights.semibold as any,
+    fontWeight: '600',
   } as TextStyle,
-  paymentList: {
-    gap: Spacing.sm,
-  } as ViewStyle,
+  cancelLink: {
+    color: '#ef4444',
+    fontWeight: '600',
+    marginTop: Spacing.sm,
+  } as TextStyle,
   paymentItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: BorderRadius['2xl'],
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
+    backgroundColor: Colors.background.card,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-  } as ViewStyle,
-  menuIconBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  } as ViewStyle,
-  paymentInfo: {
-    flex: 1,
-    gap: 4,
+    borderColor: Colors.primary[100],
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    marginTop: Spacing.sm,
   } as ViewStyle,
   paymentTitle: {
-    fontSize: Typography.sizes.base,
-    color: Colors.text.light,
-    fontWeight: Typography.weights.medium as any,
+    fontSize: Typography.sizes.lg,
+    color: Colors.text.primary,
   } as TextStyle,
   paymentSubtitle: {
     fontSize: Typography.sizes.sm,
@@ -539,94 +373,80 @@ const styles = StyleSheet.create({
   inlineRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
   } as ViewStyle,
   defaultChip: {
-    backgroundColor: 'rgba(61,188,255,0.16)',
-    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.primary[100],
     paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs / 1.2,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
   } as ViewStyle,
   defaultChipText: {
     fontSize: Typography.sizes.xs,
-    color: Colors.accent.cyan,
-    fontWeight: Typography.weights.semibold as any,
+    color: Colors.primary[700],
+    fontWeight: '600',
   } as TextStyle,
-  settingsList: {
-    gap: Spacing.md,
-  } as ViewStyle,
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: BorderRadius['2xl'],
-    paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
   } as ViewStyle,
-  settingCopy: {
+  settingTextCol: {
     flex: 1,
-    marginRight: Spacing.md,
-    gap: 4,
   } as ViewStyle,
   settingTitle: {
-    fontSize: Typography.sizes.base,
-    color: Colors.text.light,
-    fontWeight: Typography.weights.medium as any,
+    fontSize: Typography.sizes.lg,
+    color: Colors.text.primary,
+    marginBottom: 2,
   } as TextStyle,
   settingSubtitle: {
     fontSize: Typography.sizes.sm,
-    color: Colors.text.muted,
+    color: Colors.text.secondary,
   } as TextStyle,
-  menuList: {
-    gap: Spacing.sm,
+  separator: {
+    height: 1,
+    backgroundColor: Colors.primary[100],
   } as ViewStyle,
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: BorderRadius['2xl'],
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+  menuSection: {
+    backgroundColor: Colors.background.card,
+    borderRadius: BorderRadius.xl,
+    paddingVertical: Spacing.sm,
+    ...Shadows.sm,
   } as ViewStyle,
-  menuIconAccent: {
-    backgroundColor: 'rgba(39,239,161,0.16)',
-    borderColor: 'rgba(39,239,161,0.35)',
+  logoutContainer: {
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.lg,
   } as ViewStyle,
-  menuText: {
-    flex: 1,
-    fontSize: Typography.sizes.base,
-    color: Colors.text.light,
-    fontWeight: Typography.weights.medium as any,
-  } as TextStyle,
-  menuItemAccent: {
-    borderColor: 'rgba(39,239,161,0.35)',
-    backgroundColor: 'rgba(39,239,161,0.12)',
-  } as ViewStyle,
-  menuTextAccent: {
-    color: Colors.accent.cyan,
-  } as TextStyle,
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.sm,
-    marginTop: Spacing.sm,
-    marginBottom: Spacing['3xl'],
-    backgroundColor: 'rgba(255,107,107,0.12)',
-    borderRadius: BorderRadius['2xl'],
-    borderWidth: 1,
-    borderColor: 'rgba(255,107,107,0.35)',
     paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    backgroundColor: '#FEF2F2',
+    ...Shadows.sm,
   } as ViewStyle,
   logoutText: {
+    marginLeft: Spacing.sm,
+    color: '#EF4444',
+    fontWeight: '600',
+  } as TextStyle,
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.primary[50],
+  } as ViewStyle,
+  menuText: {
+    flex: 1,
     fontSize: Typography.sizes.base,
-    fontWeight: Typography.weights.semibold as any,
-    color: Colors.status.error,
+    color: Colors.text.primary,
+    marginLeft: Spacing.md,
   } as TextStyle,
 });

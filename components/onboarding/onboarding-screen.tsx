@@ -24,9 +24,9 @@ export function OnboardingScreen({
 }: OnboardingScreenProps) {
   return (
     <LinearGradient
-      colors={['#450A1D', '#120A18']}
+      colors={Colors.gradients.primary}
       start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
+      end={{ x: 1, y: 1 }}
       style={styles.container}
     >
       <SafeAreaView style={styles.safeArea}>
@@ -113,18 +113,16 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.xs,
   },
   skipButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: BorderRadius['2xl'],
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    ...Shadows.sm,
   },
   skipText: {
     color: Colors.text.light,
     fontSize: Typography.sizes.sm,
     fontWeight: Typography.weights.semibold,
-    letterSpacing: Typography.letterSpacing.wider,
   },
   placeholder: {
     width: 100,
