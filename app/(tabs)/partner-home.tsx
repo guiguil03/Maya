@@ -1,12 +1,12 @@
 import { NavigationTransition } from '@/components/common/navigation-transition';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
 import { useAuth } from '@/hooks/use-auth';
+import { QrService, QrTokenData } from '@/services/qr.service';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,7 +14,7 @@ import {
   TextStyle,
   TouchableOpacity,
   View,
-  ViewStyle,
+  ViewStyle
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -68,7 +68,11 @@ export default function PartnerHomeScreen() {
   const [selectedTab, setSelectedTab] = useState<'overview' | 'history' | 'subscription' | 'stats'>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPeriod, setFilterPeriod] = useState<'all' | 'today' | 'week' | 'month'>('all');
-  const [showQRShare, setShowQRShare] = useState(false);
+  const [qrFeedback, setQrFeedback] = useState<string | null>(null);
+  const [qrSeed, setQrSeed] = useState(() => Date.now());
+  const [qrData, setQrData] = useState<QrTokenData | null>(null);
+  const [qrLoading, setQrLoading] = useState(true);
+  const [qrError, setQrError] = useState<string | null>(null);
 
   const handleLogout = async () => {
     try {
@@ -80,11 +84,38 @@ export default function PartnerHomeScreen() {
   };
 
   const handleShareQR = () => {
-    // Logique pour partager le QR code
     console.log('Partage du QR code');
-    setShowQRShare(true);
-    setTimeout(() => setShowQRShare(false), 2000);
+    setQrFeedback('QR Code copié !');
+    setTimeout(() => setQrFeedback(null), 2000);
   };
+
+  const loadQrToken = useCallback(
+    async (forceIssue: boolean = false) => {
+      setQrLoading(true);
+      setQrError(null);
+      try {
+        const token = await QrService.issueQrToken(forceIssue);
+        setQrData(token);
+        setQrSeed(Date.now());
+      } catch (error) {
+        console.error('Erreur lors du chargement du QR Code:', error);
+        setQrError("Impossible de charger le QR Code. Vérifie que tu es connecté en tant que partenaire.");
+      } finally {
+        setQrLoading(false);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    loadQrToken();
+  }, [loadQrToken]);
+
+  const handleReloadQR = useCallback(() => {
+    loadQrToken(true);
+    setQrFeedback('QR Code régénéré');
+    setTimeout(() => setQrFeedback(null), 2000);
+  }, [loadQrToken]);
 
   const handleExportData = () => {
     // Logique pour exporter les données
@@ -194,10 +225,10 @@ export default function PartnerHomeScreen() {
                     </Text>
                   </View>
                   <View style={styles.qrActions}>
-                    <TouchableOpacity 
-                      style={styles.qrActionButton}
-                      onPress={handleShareQR}
-                    >
+                    <TouchableOpacity style={styles.qrActionButton} onPress={handleReloadQR}>
+                      <Ionicons name="refresh" size={20} color={Colors.primary[600]} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.qrActionButton} onPress={handleShareQR}>
                       <Ionicons name="share-social" size={20} color={Colors.primary[600]} />
                     </TouchableOpacity>
                   </View>
@@ -205,25 +236,25 @@ export default function PartnerHomeScreen() {
                 <View style={styles.qrCodeContainer}>
                   <View style={styles.qrCode}>
                     <View style={styles.qrGrid}>
-                      {Array.from({ length: 49 }, (_, i) => (
-                        <View
-                          key={i}
-                          style={[
-                            styles.qrSquare,
-                            {
-                              backgroundColor:
-                                (i % 7 + Math.floor(i / 7)) % 2 === 0 ? '#F59E0B' : 'white',
-                            },
-                          ]}
-                        />
-                      ))}
+                      {Array.from({ length: 49 }, (_, i) => {
+                        const isEven = (i + qrSeed) % 2 === 0;
+                        return (
+                          <View
+                            key={`${qrSeed}-${i}`}
+                            style={[
+                              styles.qrSquare,
+                              { backgroundColor: isEven ? '#F59E0B' : 'white' },
+                            ]}
+                          />
+                        );
+                      })}
                     </View>
                   </View>
                 </View>
-                {showQRShare && (
+                {qrFeedback && (
                   <View style={styles.shareSuccessBadge}>
                     <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                    <Text style={styles.shareSuccessText}>QR Code copié !</Text>
+                    <Text style={styles.shareSuccessText}>{qrFeedback}</Text>
                   </View>
                 )}
                 <View style={styles.qrButtonsRow}>
@@ -231,12 +262,13 @@ export default function PartnerHomeScreen() {
                     <Ionicons name="download" size={20} color="white" />
                     <Text style={styles.downloadButtonText}>Télécharger</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.printButton}
-                    onPress={handleShareQR}
-                  >
+                  <TouchableOpacity style={styles.printButton} onPress={handleShareQR}>
                     <Ionicons name="print" size={20} color={Colors.primary[600]} />
                     <Text style={styles.printButtonText}>Partager</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.reloadButton} onPress={handleReloadQR}>
+                    <Ionicons name="refresh" size={20} color={Colors.primary[600]} />
+                    <Text style={styles.reloadButtonText}>Rafraîchir</Text>
                   </TouchableOpacity>
                 </View>
               </View>

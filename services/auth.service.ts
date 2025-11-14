@@ -105,16 +105,23 @@ const clearTokens = async (): Promise<void> => {
   }
 };
 
-// Configuration de l'API
-// Pour iOS Simulator, utilise localhost
-// Pour Android Emulator, utilise 10.0.2.2
-// Pour appareil physique, utilise l'IP de ton ordinateur
-export const API_BASE_URL = __DEV__ 
-  ? 'http://192.168.1.11:61803/api/v1'  // HTTP sur IP locale (fonctionne avec émulateur)
-  // ? 'https://192.168.1.11:61802/api/v1'  // HTTPS (problèmes de certificat SSL)
-  // ? 'https://localhost:61802/api/v1'  // Localhost (Postman seulement)
-  // ? 'https://10.0.2.2:61802/api/v1'  // Android Emulator (alternative)
-  : 'https://ton-api-production.com/api/v1'; // Mode production
+const normalizeBaseUrl = (raw?: string | null) => {
+  if (!raw) {
+    return undefined;
+  }
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
+};
+
+const DEFAULT_DEV_API_BASE = 'https://randee-unnarrated-kamdyn.ngrok-free.dev/api/v1';
+const ENV_API_BASE = normalizeBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL);
+
+export const API_BASE_URL =
+  ENV_API_BASE ??
+  (__DEV__ ? DEFAULT_DEV_API_BASE : 'https://ton-api-production.com/api/v1'); // Mode production
 
 // Fonction utilitaire pour enlever le mot de passe d'un utilisateur
 const removePassword = (user: User): PublicUser => {
