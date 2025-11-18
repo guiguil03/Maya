@@ -323,8 +323,21 @@ export const QrService = {
 
   /**
    * Valide un QR Code scanné (côté partenaire)
+   * @param qrToken - Le token QR à valider (peut être extrait d'un texte partagé)
+   * @param partnerId - ID du partenaire (optionnel, peut être récupéré depuis le token utilisateur)
+   * @param storeId - ID du magasin (optionnel)
+   * @param operatorUserId - ID de l'opérateur (optionnel, peut être récupéré depuis le token utilisateur)
+   * @param amountGross - Montant brut de la transaction (optionnel)
+   * @param personsCount - Nombre de personnes (optionnel)
    */
-  validateQrToken: async (qrToken: string): Promise<any> => {
+  validateQrToken: async (
+    qrToken: string,
+    partnerId?: string,
+    storeId?: string,
+    operatorUserId?: string,
+    amountGross?: number,
+    personsCount?: number
+  ): Promise<any> => {
     console.log('✅ [QR Service] validateQrToken appelé');
     
     if (!qrToken) {
@@ -332,9 +345,22 @@ export const QrService = {
       throw new Error('Token QR requis');
     }
 
+    // Nettoyer le token si il contient du texte supplémentaire (ex: "Mon QR Code Maya\n\nToken: xxx")
+    let cleanToken = qrToken;
+    if (qrToken.includes('Token:')) {
+      const tokenMatch = qrToken.match(/Token:\s*([^\s\n]+)/);
+      if (tokenMatch && tokenMatch[1]) {
+        cleanToken = tokenMatch[1];
+        console.log('🧹 [QR Service] Token nettoyé depuis le texte partagé');
+      }
+    }
+
     console.log('🔍 [QR Service] Validation du token QR', {
-      token: qrToken.substring(0, 30) + '...',
-      tokenLength: qrToken.length,
+      originalToken: qrToken.substring(0, 30) + '...',
+      cleanToken: cleanToken.substring(0, 30) + '...',
+      tokenLength: cleanToken.length,
+      hasPartnerId: !!partnerId,
+      hasStoreId: !!storeId,
     });
 
     const token = await AuthService.getAccessToken();
@@ -351,6 +377,37 @@ export const QrService = {
       console.warn('⚠️ [QR Service] Aucun token d\'authentification disponible');
     }
 
+    // Préparer le body selon l'API
+    const requestBody: any = {
+      qrToken: cleanToken,
+    };
+
+    // Ajouter les paramètres optionnels s'ils sont fournis
+    if (partnerId) {
+      requestBody.partnerId = partnerId;
+    }
+    if (storeId) {
+      requestBody.storeId = storeId;
+    }
+    if (operatorUserId) {
+      requestBody.operatorUserId = operatorUserId;
+    }
+    if (amountGross !== undefined) {
+      requestBody.amountGross = amountGross;
+    }
+    if (personsCount !== undefined) {
+      requestBody.personsCount = personsCount;
+    }
+
+    console.log('📤 [QR Service] Body de la requête:', {
+      hasQrToken: !!requestBody.qrToken,
+      hasPartnerId: !!requestBody.partnerId,
+      hasStoreId: !!requestBody.storeId,
+      hasOperatorUserId: !!requestBody.operatorUserId,
+      amountGross: requestBody.amountGross,
+      personsCount: requestBody.personsCount,
+    });
+
     console.log('🌐 [QR Service] Appel API: POST /api/qr/validate');
     console.log('🌐 [QR Service] Base URL:', QR_API_BASE_URL);
 
@@ -361,7 +418,7 @@ export const QrService = {
         {
           method: 'POST',
           headers,
-          body: JSON.stringify({ token: qrToken }),
+          body: JSON.stringify(requestBody),
         },
         0,
         QR_API_BASE_URL,

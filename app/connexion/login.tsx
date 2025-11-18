@@ -25,7 +25,8 @@ export default function LoginScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleLogin = async () => {
     // Réinitialiser les erreurs
@@ -98,7 +99,49 @@ export default function LoginScreen() {
                 </View>
               ) : null}
 
-              {/* Connexion sociale désactivée temporairement */}
+              {/* Bouton de connexion Google */}
+              <TouchableOpacity
+                style={[styles.googleButton, googleLoading && styles.googleButtonDisabled]}
+                onPress={async () => {
+                  setGoogleLoading(true);
+                  setErrorMessage('');
+                  try {
+                    await signInWithGoogle();
+                    router.replace('/(tabs)/home');
+                  } catch (error) {
+                    console.error('Erreur lors de la connexion Google:', error);
+                    if (error instanceof Error) {
+                      if (error.message.includes('annulée')) {
+                        setErrorMessage('Connexion Google annulée');
+                      } else {
+                        setErrorMessage(`❌ Erreur Google: ${error.message}`);
+                      }
+                    } else {
+                      setErrorMessage('❌ Échec de la connexion Google. Veuillez réessayer.');
+                    }
+                  } finally {
+                    setGoogleLoading(false);
+                  }
+                }}
+                disabled={googleLoading}
+              >
+                <View style={styles.googleButtonContent}>
+                  {googleLoading ? (
+                    <Text style={styles.googleButtonText}>Connexion...</Text>
+                  ) : (
+                    <>
+                      <Ionicons name="logo-google" size={20} color="#4285F4" />
+                      <Text style={styles.googleButtonText}>Continuer avec Google</Text>
+                    </>
+                  )}
+                </View>
+              </TouchableOpacity>
+
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>OU</Text>
+                <View style={styles.dividerLine} />
+              </View>
 
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Rôle</Text>
@@ -234,6 +277,10 @@ type LoginStyles = {
   socialButton: ViewStyle;
   socialIconButton: ViewStyle;
   socialButtonText: TextStyle;
+  googleButton: ViewStyle;
+  googleButtonDisabled: ViewStyle;
+  googleButtonContent: ViewStyle;
+  googleButtonText: TextStyle;
   divider: ViewStyle;
   dividerLine: ViewStyle;
   dividerText: TextStyle;
@@ -364,6 +411,30 @@ const styles = StyleSheet.create<LoginStyles>({
     fontSize: 14,
     fontWeight: '500',
   },
+  googleButton: {
+    backgroundColor: 'white',
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    ...Shadows.sm,
+  } as ViewStyle,
+  googleButtonDisabled: {
+    opacity: 0.6,
+  } as ViewStyle,
+  googleButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  } as ViewStyle,
+  googleButtonText: {
+    color: '#1F2937',
+    fontSize: Typography.sizes.base,
+    fontWeight: '600',
+  } as TextStyle,
   divider: {
     flexDirection: 'row',
     alignItems: 'center',

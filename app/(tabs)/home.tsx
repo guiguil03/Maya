@@ -6,12 +6,15 @@ import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/
 import { useAuth } from '@/hooks/use-auth';
 import { QrService, QrTokenData } from '@/services/qr.service';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as Print from 'expo-print';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextStyle,
@@ -27,6 +30,7 @@ export default function HomeScreen() {
   const [qrLoading, setQrLoading] = useState(true);
   const [qrError, setQrError] = useState<string | null>(null);
   const [qrSeed, setQrSeed] = useState(() => Date.now());
+  const [qrCodeResponse, setQrCodeResponse] = useState<any | null>(null);
 
   // Vérifier si l'utilisateur est un partenaire
   useEffect(() => {
@@ -47,12 +51,33 @@ export default function HomeScreen() {
     setQrLoading(true);
     setQrError(null);
     try {
-      const token = await QrService.issueQrToken(forceRefresh);
+      // Récupérer le QR Code complet avec l'image
+      const qrCode = await QrService.getCurrentQrCode();
+      console.log('✅ [Home] QR Code récupéré:', {
+        hasToken: !!qrCode.token,
+        hasImage: !!qrCode.imageBase64,
+        hasUrl: !!qrCode.qrCodeUrl,
+      });
+      
+      setQrCodeResponse(qrCode);
+      
+      // Utiliser le token pour l'affichage
+      const token: QrTokenData = {
+        token: qrCode.token,
+        expiresAt: qrCode.expiresAt,
+      };
       setQrData(token);
       setQrSeed(Date.now());
     } catch (error) {
       console.error('Erreur lors du chargement du QR Code:', error);
-      setQrError("Impossible de charger le QR Code.");
+      // Fallback sur issueQrToken si getCurrentQrCode échoue
+      try {
+        const token = await QrService.issueQrToken(forceRefresh);
+        setQrData(token);
+        setQrSeed(Date.now());
+      } catch {
+        setQrError("Impossible de charger le QR Code.");
+      }
     } finally {
       setQrLoading(false);
     }
@@ -67,6 +92,221 @@ export default function HomeScreen() {
   const handleReloadQR = useCallback(() => {
     loadQrToken(true);
   }, [loadQrToken]);
+
+  // Générer et partager le QR Code en PDF
+  const handleShareQR = useCallback(async () => {
+    if (!qrData) {
+      Alert.alert('Erreur', 'Aucun QR Code disponible à partager');
+      return;
+    }
+
+    try {
+      console.log('📤 [Home] Génération du PDF avec QR Code...');
+      
+      // Récupérer l'image base64 du QR Code ou générer une URL
+      let qrImageSrc = qrCodeResponse?.imageBase64;
+      
+      // Si on a l'image base64, s'assurer qu'elle a le bon format
+      if (qrImageSrc) {
+        if (!qrImageSrc.startsWith('data:')) {
+          qrImageSrc = `data:image/png;base64,${qrImageSrc}`;
+        }
+        console.log('✅ [Home] Utilisation de l\'image base64 du QR Code');
+      } else if (qrCodeResponse?.qrCodeUrl) {
+        // Utiliser l'URL directement
+        qrImageSrc = qrCodeResponse.qrCodeUrl;
+        console.log('✅ [Home] Utilisation de l\'URL du QR Code:', qrImageSrc);
+      } else {
+        // Générer une URL de QR Code en ligne à partir du token
+        console.log('🔄 [Home] Génération d\'une URL QR Code à partir du token...');
+        qrImageSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData.token)}`;
+        console.log('✅ [Home] URL QR Code générée:', qrImageSrc);
+      }
+
+      // Créer le HTML pour le PDF
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <style>
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                margin: 0;
+                padding: 40px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: #1F2937;
+              }
+              .container {
+                background: white;
+                border-radius: 20px;
+                padding: 40px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                max-width: 500px;
+                width: 100%;
+                text-align: center;
+              }
+              .logo {
+                font-size: 32px;
+                font-weight: bold;
+                color: #8B5CF6;
+                margin-bottom: 10px;
+              }
+              .title {
+                font-size: 24px;
+                font-weight: bold;
+                color: #1F2937;
+                margin-bottom: 10px;
+              }
+              .subtitle {
+                font-size: 16px;
+                color: #6B7280;
+                margin-bottom: 30px;
+              }
+              .qr-container {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                margin: 30px 0;
+                padding: 20px;
+                background: #F9FAFB;
+                border-radius: 12px;
+              }
+              .qr-image {
+                width: 300px;
+                height: 300px;
+                object-fit: contain;
+              }
+              .token-info {
+                margin-top: 30px;
+                padding: 20px;
+                background: #F3F4F6;
+                border-radius: 12px;
+                font-size: 12px;
+                color: #6B7280;
+                word-break: break-all;
+              }
+              .footer {
+                margin-top: 30px;
+                font-size: 12px;
+                color: #9CA3AF;
+              }
+              .expiry {
+                margin-top: 15px;
+                font-size: 14px;
+                color: #6B7280;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="logo">✨ Maya</div>
+              <div class="title">Mon QR Code Maya</div>
+              <div class="subtitle">Présentez ce code chez tous nos partenaires</div>
+              
+              <div class="qr-container">
+                <img src="${qrImageSrc}" alt="QR Code Maya" class="qr-image" />
+              </div>
+              
+              <div class="token-info">
+                <strong>Token:</strong><br>
+                ${qrData.token}
+              </div>
+              
+              ${qrData.expiresAt ? `
+                <div class="expiry">
+                  <strong>Expire le:</strong> ${new Date(qrData.expiresAt).toLocaleDateString('fr-FR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
+              ` : ''}
+              
+              <div class="footer">
+                Scannez ce QR Code pour valider votre visite chez un partenaire Maya
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      console.log('📄 [Home] Génération du PDF...');
+      
+      // Générer le PDF
+      const { uri } = await Print.printToFileAsync({
+        html: htmlContent,
+        base64: false,
+      });
+
+      console.log('✅ [Home] PDF généré:', uri);
+
+      // Partager le PDF
+      const shareOptions: any = {
+        url: uri,
+        mimeType: 'application/pdf',
+        title: 'Mon QR Code Maya.pdf',
+      };
+
+      const result = await Share.share(shareOptions);
+      
+      if (result.action === Share.sharedAction) {
+        console.log('✅ [Home] PDF partagé avec succès');
+        if (result.activityType) {
+          console.log('📱 [Home] Partagé via:', result.activityType);
+        }
+      } else if (result.action === Share.dismissedAction) {
+        console.log('❌ [Home] Partage annulé');
+      }
+
+      // Nettoyer le fichier temporaire après un délai
+      setTimeout(async () => {
+        try {
+          const fileInfo = await FileSystem.getInfoAsync(uri);
+          if (fileInfo.exists) {
+            await FileSystem.deleteAsync(uri, { idempotent: true });
+            console.log('🗑️ [Home] Fichier PDF temporaire supprimé');
+          }
+        } catch (error) {
+          console.warn('⚠️ [Home] Impossible de supprimer le fichier temporaire:', error);
+        }
+      }, 60000); // Supprimer après 1 minute
+
+    } catch (error) {
+      console.error('❌ [Home] Erreur lors de la génération du PDF:', error);
+      Alert.alert(
+        'Erreur',
+        'Impossible de générer le PDF. Voulez-vous partager le token en texte ?',
+        [
+          {
+            text: 'Annuler',
+            style: 'cancel',
+          },
+          {
+            text: 'Partager le token',
+            onPress: async () => {
+              try {
+                const shareMessage = `Mon QR Code Maya\n\nToken: ${qrData.token}\n\nScannez ce code pour valider ma visite chez un partenaire Maya.`;
+                await Share.share({
+                  message: shareMessage,
+                  title: 'Mon QR Code Maya',
+                });
+              } catch (shareError) {
+                console.error('❌ [Home] Erreur lors du partage du token:', shareError);
+              }
+            },
+          },
+        ]
+      );
+    }
+  }, [qrData, qrCodeResponse]);
 
   const handleScanPartner = () => {
     setShowQRScanner(true);
@@ -129,18 +369,32 @@ export default function HomeScreen() {
                 <Text style={styles.qrTitle}>Votre QR Code Maya</Text>
                 <Text style={styles.qrSubtitle}>Présentez ce code chez tous nos partenaires</Text>
               </View>
-              <TouchableOpacity 
-                style={styles.qrReloadButton}
-                onPress={handleReloadQR}
-                disabled={qrLoading}
-              >
-                <Ionicons 
-                  name="refresh" 
-                  size={20} 
-                  color={Colors.primary[600]} 
-                  style={qrLoading && { opacity: 0.5 }}
-                />
-              </TouchableOpacity>
+              <View style={styles.qrHeaderActions}>
+                <TouchableOpacity 
+                  style={styles.qrActionButton}
+                  onPress={handleShareQR}
+                  disabled={qrLoading || !qrData}
+                >
+                  <Ionicons 
+                    name="share-outline" 
+                    size={20} 
+                    color={Colors.primary[600]} 
+                    style={(qrLoading || !qrData) && { opacity: 0.5 }}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.qrReloadButton}
+                  onPress={handleReloadQR}
+                  disabled={qrLoading}
+                >
+                  <Ionicons 
+                    name="refresh" 
+                    size={20} 
+                    color={Colors.primary[600]} 
+                    style={qrLoading && { opacity: 0.5 }}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
             
             <View style={styles.qrContainer}>
@@ -273,6 +527,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: Spacing.lg,
+  } as ViewStyle,
+  qrHeaderActions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  } as ViewStyle,
+  qrActionButton: {
+    padding: Spacing.sm,
+    backgroundColor: Colors.primary[50],
+    borderRadius: BorderRadius.md,
   } as ViewStyle,
   qrReloadButton: {
     padding: Spacing.sm,
