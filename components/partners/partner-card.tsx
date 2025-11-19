@@ -158,13 +158,13 @@ export function PartnerCard({ partner, onPress, style }: PartnerCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: BorderRadius.xl,
     padding: Spacing.md,
     marginBottom: Spacing.md,
     ...Shadows.lg,
     borderWidth: 1,
-    borderColor: Colors.primary[100],
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   imageText: {
     fontSize: 28,
-    color: Colors.text.primary,
+    color: Colors.text.light,
   } as TextStyle,
   promotionBadge: {
     position: 'absolute',
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   name: {
     fontSize: Typography.sizes.lg,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     flex: 1,
     marginRight: Spacing.sm,
   } as TextStyle,

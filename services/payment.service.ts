@@ -265,32 +265,42 @@ export const PaymentService = {
 
   /**
    * Créer une session de checkout pour un abonnement
-   * @param planCode - Code du plan d'abonnement (ex: "individual", "duo", "famille", "vip")
+   * @param planCode - Code du plan d'abonnement (ex: "solo", "duo", "family")
    * @param successUrl - URL de redirection en cas de succès
    * @param cancelUrl - URL de redirection en cas d'annulation
+   * @param billingCycle - Cycle de facturation ("monthly" ou "annual")
    * @returns URL de la session de checkout ou données de la session
    */
   createCheckoutSession: async (
     planCode: string,
     successUrl: string,
-    cancelUrl: string
+    cancelUrl: string,
+    billingCycle?: 'monthly' | 'annual'
   ): Promise<any> => {
     console.log('💳 [Payments Service] createCheckoutSession appelé');
     console.log('📋 [Payments Service] Paramètres:', {
       planCode,
       successUrl,
       cancelUrl,
+      billingCycle,
     });
 
     try {
       const startTime = Date.now();
+      const requestBody: any = {
+        planCode,
+        successUrl,
+        cancelUrl,
+      };
+      
+      // Ajouter le billingCycle si fourni
+      if (billingCycle) {
+        requestBody.billingCycle = billingCycle;
+      }
+      
       const response = await paymentsApiCall<any>('/payments/create-checkout-session', {
         method: 'POST',
-        body: JSON.stringify({
-          planCode,
-          successUrl,
-          cancelUrl,
-        }),
+        body: JSON.stringify(requestBody),
       });
       const duration = Date.now() - startTime;
 

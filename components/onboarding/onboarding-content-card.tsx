@@ -23,7 +23,7 @@ export function OnboardingContentCard({
   title, 
   description, 
   imageSource,
-  gradientColors = ['#3B82F6', '#8B5CF6'],
+  gradientColors = ['#7B1F2F', '#8B2F3F'],
   delay = 0
 }: OnboardingContentCardProps) {
   const iconScale = useSharedValue(1);

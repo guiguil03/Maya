@@ -19,13 +19,13 @@ export default function TabLayout() {
     <Tabs
       initialRouteName="home"
       screenOptions={{
-        tabBarActiveTintColor: '#8B5CF6',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: '#8B2F3F',
+        tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
         headerShown: false,
         tabBarStyle: isPartner ? {
           display: 'none', // Masquer la barre de navigation pour les partenaires
         } : {
-          backgroundColor: 'white',
+          backgroundColor: '#1A0A0E',
           borderTopWidth: 0,
           paddingBottom: 12,
           paddingTop: 12,
@@ -119,6 +119,12 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="partner-home"
+        options={{
+          href: null, // Cacher de la barre de navigation
+        }}
+      />
+      <Tabs.Screen
+        name="stores-map"
         options={{
           href: null, // Cacher de la barre de navigation
         }}

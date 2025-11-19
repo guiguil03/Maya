@@ -443,7 +443,7 @@ const ForgotPasswordScreen: React.FC = () => {
           <View style={styles.content}>
             <View style={styles.card}>
               <View style={styles.iconContainer}>
-                <Ionicons name="lock-closed-outline" size={64} color="#8B5CF6" />
+                <Ionicons name="lock-closed-outline" size={64} color="#8B2F3F" />
               </View>
 
               <Text style={styles.title}>{renderTitle()}</Text>
@@ -600,7 +600,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
   },
   backToEmailText: {
-    color: '#8B5CF6',
+    color: '#8B2F3F',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -621,7 +621,7 @@ const styles = StyleSheet.create({
   },
   backToLogin: {
     textAlign: 'center',
-    color: '#8B5CF6',
+    color: '#8B2F3F',
     fontSize: 16,
     fontWeight: '600',
   },

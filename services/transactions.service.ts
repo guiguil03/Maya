@@ -4,18 +4,56 @@ import { apiCall } from './shared/api';
 const TRANSACTIONS_API_BASE_URL = API_BASE_URL.replace(/\/api\/v1$/i, '/api');
 
 const transactionsApiCall = async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
-  const token = await AuthService.getAccessToken();
+  try {
+    const token = await AuthService.getAccessToken();
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> | undefined),
-  };
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string> | undefined),
+    };
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Passer les headers dans les options
+    const finalOptions: RequestInit = {
+      ...options,
+      headers: {
+        ...options.headers,
+        ...headers,
+      },
+    };
+
+    return await apiCall<T>(endpoint, finalOptions, 0, TRANSACTIONS_API_BASE_URL);
+  } catch (error) {
+    // Si erreur 401, essayer de rafraîchir le token
+    if (error instanceof Error && error.message.includes('401')) {
+      console.log('🔄 [Transactions] Token expiré, tentative de rafraîchissement...');
+      try {
+        // Essayer de rafraîchir le token
+        const refreshedToken = await AuthService.getAccessToken();
+        if (refreshedToken) {
+          const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${refreshedToken}`,
+            ...(options.headers as Record<string, string> | undefined),
+          };
+          const retryOptions: RequestInit = {
+            ...options,
+            headers: {
+              ...options.headers,
+              ...headers,
+            },
+          };
+          return await apiCall<T>(endpoint, retryOptions, 0, TRANSACTIONS_API_BASE_URL);
+        }
+      } catch (refreshError) {
+        console.error('❌ [Transactions] Impossible de rafraîchir le token:', refreshError);
+      }
+    }
+    throw error;
   }
-
-  return apiCall<T>(endpoint, options, 0, TRANSACTIONS_API_BASE_URL);
 };
 
 export interface TransactionQueryParams {
@@ -114,6 +152,12 @@ export const TransactionsService = {
       throw new Error('User ID requis');
     }
 
+    console.log('📊 [Transactions Service] getUserTransactions appelé:', {
+      userId,
+      userIdLength: userId.length,
+      filters,
+    });
+
     const params = new URLSearchParams();
 
     if (filters.page) {
@@ -132,7 +176,15 @@ export const TransactionsService = {
     const query = params.toString();
     const endpoint = `/transactions/user/${userId}${query ? `?${query}` : ''}`;
 
+    console.log('🌐 [Transactions Service] Appel API:', endpoint);
+
     const response = await transactionsApiCall<any>(endpoint);
+    
+    console.log('✅ [Transactions Service] Réponse reçue:', {
+      isArray: Array.isArray(response),
+      hasItems: !!response?.items,
+      itemsCount: Array.isArray(response) ? response.length : response?.items?.length || 0,
+    });
 
     if (Array.isArray(response)) {
       return {

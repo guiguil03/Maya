@@ -18,9 +18,10 @@ interface QRScannerProps {
   visible: boolean;
   onClose: () => void;
   onScan: (data: string) => void;
+  mode?: 'client' | 'partner'; // Mode client: scanne les QR codes partenaires, Mode partner: scanne les tokens clients
 }
 
-export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
+export function QRScanner({ visible, onClose, onScan, mode = 'client' }: QRScannerProps) {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [facing, setFacing] = useState<CameraType>('back');
@@ -36,8 +37,18 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
     
     setScanned(true);
     console.log('📱 QR Code scanné:', data);
+    console.log('🔍 Mode scanner:', mode);
     
-    // Vérifier si c'est un QR code de partenaire Maya
+    // Mode partenaire: accepter tous les QR codes (tokens clients)
+    if (mode === 'partner') {
+      console.log('✅ [Partner Mode] QR Code accepté, validation via API...');
+      onScan(data);
+      // Ne pas fermer automatiquement, laisser la validation se faire
+      setScanned(false); // Permettre de scanner à nouveau si nécessaire
+      return;
+    }
+    
+    // Mode client: vérifier si c'est un QR code de partenaire Maya
     if (data.startsWith('maya:partner:') || data.includes('partner')) {
       onScan(data);
       Alert.alert(
@@ -154,7 +165,9 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Scannez le QR code d'un partenaire Maya pour valider votre visite
+            {mode === 'partner' 
+              ? 'Scannez le QR code du client pour valider sa visite'
+              : 'Scannez le QR code d\'un partenaire Maya pour valider votre visite'}
           </Text>
         </View>
       </SafeAreaView>

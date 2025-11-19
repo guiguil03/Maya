@@ -1,29 +1,27 @@
 import { NavigationTransition } from '@/components/common/navigation-transition';
-import { SubscriptionHeader } from '@/components/headers/subscription-header';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
-import { PaymentService, PaymentRequest } from '@/services/payment.service';
+import { PaymentService } from '@/services/payment.service';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextStyle,
   TouchableOpacity,
   View,
-  ViewStyle,
+  ViewStyle
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SubscriptionScreen() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
-  const [selectedPlan, setSelectedPlan] = useState<'individual' | 'duo' | 'famille' | 'vip'>('duo');
+  const [selectedPlan, setSelectedPlan] = useState<'solo' | 'duo' | 'family'>('duo');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -40,20 +38,18 @@ export default function SubscriptionScreen() {
 
   const getPlanPrice = () => {
     const prices = {
-      individual: { monthly: 3, annual: 30 },
-      duo: { monthly: 5, annual: 50 },
-      famille: { monthly: 7, annual: 70 },
-      vip: { monthly: 12, annual: 120 },
+      solo: { monthly: 9.90, annual: 99.00 },
+      duo: { monthly: 14.90, annual: 149.00 },
+      family: { monthly: 24.00, annual: 240.00 },
     };
     return prices[selectedPlan][billingCycle];
   };
 
   const getPlanName = () => {
     const names = {
-      individual: 'Individuel',
+      solo: 'Solo',
       duo: 'Duo',
-      famille: 'Famille',
-      vip: 'VIP',
+      family: 'Family',
     };
     return names[selectedPlan];
   };
@@ -75,44 +71,73 @@ export default function SubscriptionScreen() {
     setIsProcessingPayment(true);
 
     try {
-      const paymentRequest: PaymentRequest = {
-        amount: getPlanPrice(),
-        currency: 'EUR',
-        planId: selectedPlan,
-        planName: getPlanName(),
+      // Créer une session de checkout via l'API
+      const planCode = getPlanCode();
+      const successUrl = 'm ';
+      const cancelUrl = 'maya://subscription/cancel';
+
+      console.log('💳 Création de la session de checkout:', { 
+        planCode, 
         billingCycle,
-        paymentMethod: selectedPaymentMethod as any,
-      };
+        successUrl, 
+        cancelUrl 
+      });
 
-      const response = await PaymentService.processPayment(paymentRequest);
+      const checkoutSession = await PaymentService.createCheckoutSession(
+        planCode,
+        successUrl,
+        cancelUrl,
+        billingCycle
+      );
 
-      if (response.success) {
+      console.log('✅ Session de checkout créée:', checkoutSession);
+
+      // Si l'API retourne une URL, on peut ouvrir un navigateur web ou gérer la redirection
+      if (checkoutSession?.url) {
+        // Pour React Native, on peut utiliser Linking pour ouvrir l'URL
+        const canOpen = await Linking.canOpenURL(checkoutSession.url);
+        
+        if (canOpen) {
+          await Linking.openURL(checkoutSession.url);
+          Alert.alert(
+            '✅ Redirection',
+            'Vous allez être redirigé vers la page de paiement.',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  setShowPaymentModal(false);
+                  setSelectedPaymentMethod(null);
+                },
+              },
+            ]
+          );
+        } else {
+          throw new Error('Impossible d\'ouvrir l\'URL de paiement');
+        }
+      } else if (checkoutSession?.sessionId) {
+        // Si on a un sessionId, le paiement est peut-être déjà traité
         Alert.alert(
-          '✅ Paiement réussi',
-          `Votre abonnement ${getPlanName()} a été activé avec succès.\n\nTransaction: ${response.transactionId}`,
+          '✅ Session créée',
+          `Session de paiement créée avec succès.\n\nSession ID: ${checkoutSession.sessionId}`,
           [
             {
               text: 'Parfait',
               onPress: () => {
                 setShowPaymentModal(false);
                 setSelectedPaymentMethod(null);
-                // router.replace('/(tabs)/home');
               },
             },
           ]
         );
       } else {
-        Alert.alert(
-          '❌ Erreur de paiement',
-          response.error || 'Une erreur est survenue lors du paiement',
-          [{ text: 'OK' }]
-        );
+        throw new Error('Réponse inattendue de l\'API');
       }
     } catch (error) {
       console.error('Erreur lors du paiement:', error);
       Alert.alert(
         '❌ Erreur',
-        'Une erreur inattendue est survenue. Veuillez réessayer.',
+        error instanceof Error ? error.message : 'Une erreur inattendue est survenue. Veuillez réessayer.',
         [{ text: 'OK' }]
       );
     } finally {
@@ -122,16 +147,18 @@ export default function SubscriptionScreen() {
 
   return (
     <NavigationTransition>
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.container}>
-          <SubscriptionHeader
-            title="Choisissez votre plan"
-            subtitle="Économisez 10% partout avec Maya"
-            currentPlan="Duo"
-            onNotificationPress={() => console.log('Notifications')}
-          />
-
+      <LinearGradient
+        colors={Colors.gradients.primary}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.container}
+      >
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
           <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Choisissez votre plan</Text>
+              <Text style={styles.subtitle}>Économisez jusqu&apos;à 20% chez tous nos partenaires</Text>
+            </View>
             {/* Toggle Mensuel/Annuel */}
             <View style={styles.billingToggle}>
               <TouchableOpacity
@@ -155,23 +182,23 @@ export default function SubscriptionScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Plan Individuel */}
+            {/* Plan Solo */}
             <TouchableOpacity
-              style={[styles.planCard, selectedPlan === 'individual' && styles.planCardSelected]}
-              onPress={() => setSelectedPlan('individual')}
+              style={[styles.planCard, selectedPlan === 'solo' && styles.planCardSelected]}
+              onPress={() => setSelectedPlan('solo')}
             >
               <View style={styles.planIcon}>
                 <LinearGradient
                   colors={['#3B82F6', '#1D4ED8']}
                   style={styles.planIconGradient}
                 >
-                  <Ionicons name="flash" size={24} color="white" />
+                  <Ionicons name="person" size={24} color="white" />
                 </LinearGradient>
               </View>
               <View style={styles.planInfo}>
-                <Text style={styles.planName}>Individuel</Text>
+                <Text style={styles.planName}>Solo</Text>
                 <Text style={styles.planPrice}>
-                  {billingCycle === 'monthly' ? '3€ /mois' : '30€ /an'}
+                  {billingCycle === 'monthly' ? '9,90€ /mois' : '99,00€ /an'}
                 </Text>
                 <View style={styles.planFeatures}>
                   <View style={styles.feature}>
@@ -193,8 +220,8 @@ export default function SubscriptionScreen() {
                 </View>
               </View>
               <View style={styles.planSelector}>
-                <View style={[styles.radioButton, selectedPlan === 'individual' && styles.radioButtonSelected]}>
-                  {selectedPlan === 'individual' && (
+                <View style={[styles.radioButton, selectedPlan === 'solo' && styles.radioButtonSelected]}>
+                  {selectedPlan === 'solo' && (
                     <Ionicons name="checkmark" size={16} color="white" />
                   )}
                 </View>
@@ -212,7 +239,7 @@ export default function SubscriptionScreen() {
               </View>
               <View style={styles.planIcon}>
                 <LinearGradient
-                  colors={['#8B5CF6', '#7C3AED']}
+                  colors={['#8B2F3F', '#7B1F2F']}
                   style={styles.planIconGradient}
                 >
                   <Ionicons name="people" size={24} color="white" />
@@ -221,7 +248,7 @@ export default function SubscriptionScreen() {
               <View style={styles.planInfo}>
                 <Text style={styles.planName}>Duo</Text>
                 <Text style={styles.planPrice}>
-                  {billingCycle === 'monthly' ? '5€ /mois' : '50€ /an'}
+                  {billingCycle === 'monthly' ? '14,90€ /mois' : '149,00€ /an'}
                 </Text>
                 <View style={styles.planFeatures}>
                   <View style={styles.feature}>
@@ -255,10 +282,10 @@ export default function SubscriptionScreen() {
               </View>
             </TouchableOpacity>
 
-            {/* Plan Famille */}
+            {/* Plan Family */}
             <TouchableOpacity
-              style={[styles.planCard, selectedPlan === 'famille' && styles.planCardSelected]}
-              onPress={() => setSelectedPlan('famille')}
+              style={[styles.planCard, selectedPlan === 'family' && styles.planCardSelected]}
+              onPress={() => setSelectedPlan('family')}
             >
               <View style={styles.planIcon}>
                 <LinearGradient
@@ -269,9 +296,9 @@ export default function SubscriptionScreen() {
                 </LinearGradient>
               </View>
               <View style={styles.planInfo}>
-                <Text style={styles.planName}>Famille</Text>
+                <Text style={styles.planName}>Family</Text>
                 <Text style={styles.planPrice}>
-                  {billingCycle === 'monthly' ? '7€ /mois' : '70€ /an'}
+                  {billingCycle === 'monthly' ? '24,00€ /mois' : '240,00€ /an'}
                 </Text>
                 <View style={styles.planFeatures}>
                   <View style={styles.feature}>
@@ -301,71 +328,17 @@ export default function SubscriptionScreen() {
                 </View>
               </View>
               <View style={styles.planSelector}>
-                <View style={[styles.radioButton, selectedPlan === 'famille' && styles.radioButtonSelected]}>
-                  {selectedPlan === 'famille' && (
+                <View style={[styles.radioButton, selectedPlan === 'family' && styles.radioButtonSelected]}>
+                  {selectedPlan === 'family' && (
                     <Ionicons name="checkmark" size={16} color="white" />
                   )}
                 </View>
               </View>
-            </TouchableOpacity>
-
-            {/* Plan VIP */}
-            <TouchableOpacity
-              style={[styles.planCard, selectedPlan === 'vip' && styles.planCardSelected]}
-              onPress={() => setSelectedPlan('vip')}
-            >
-              <View style={styles.planIcon}>
-                <LinearGradient
-                  colors={['#F59E0B', '#D97706']}
-                  style={styles.planIconGradient}
-                >
-                  <Ionicons name="diamond" size={24} color="white" />
-                </LinearGradient>
-              </View>
-              <View style={styles.planInfo}>
-                <Text style={styles.planName}>VIP</Text>
-                <Text style={styles.planPrice}>
-                  {billingCycle === 'monthly' ? '12€ /mois' : '120€ /an'}
-                </Text>
-                <View style={styles.planFeatures}>
-                  <View style={styles.feature}>
-                    <Ionicons name="checkmark" size={16} color="#10B981" />
-                    <Text style={styles.featureText}>6 QR Codes</Text>
-                  </View>
-                  <View style={styles.feature}>
-                    <Ionicons name="checkmark" size={16} color="#10B981" />
-                    <Text style={styles.featureText}>10% de remise + bonus</Text>
-                  </View>
-                  <View style={styles.feature}>
-                    <Ionicons name="checkmark" size={16} color="#10B981" />
-                    <Text style={styles.featureText}>Offres VIP exclusives</Text>
-                  </View>
-                  <View style={styles.feature}>
-                    <Ionicons name="checkmark" size={16} color="#10B981" />
-                    <Text style={styles.featureText}>Concierge personnel</Text>
-                  </View>
-                  <View style={styles.feature}>
-                    <Ionicons name="checkmark" size={16} color="#10B981" />
-                    <Text style={styles.featureText}>Accès prioritaire</Text>
-                  </View>
-                  <View style={styles.feature}>
-                    <Ionicons name="checkmark" size={16} color="#10B981" />
-                    <Text style={styles.featureText}>Support 24/7</Text>
-                  </View>
-                </View>
-              </View>
-              <View style={styles.planSelector}>
-                <View style={[styles.radioButton, selectedPlan === 'vip' && styles.radioButtonSelected]}>
-                  {selectedPlan === 'vip' && (
-                    <Ionicons name="checkmark" size={16} color="white" />
-                  )}
-              </View>
-            </View>
             </TouchableOpacity>
 
             {/* Section Pourquoi choisir Maya */}
             <LinearGradient
-              colors={['#8B5CF6', '#EC4899']}
+              colors={['#8B2F3F', '#9B3F4F']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.whyChooseSection}
@@ -392,7 +365,8 @@ export default function SubscriptionScreen() {
               </LinearGradient>
             </TouchableOpacity>
           </ScrollView>
-        </View>
+        </SafeAreaView>
+      </LinearGradient>
 
         {/* Modal de sélection du paiement */}
         <Modal
@@ -429,7 +403,7 @@ export default function SubscriptionScreen() {
                 <View style={[styles.summaryRow, styles.summaryTotal]}>
                   <Text style={styles.summaryTotalLabel}>Total</Text>
                   <Text style={styles.summaryTotalValue}>
-                    {getPlanPrice()}€ {billingCycle === 'monthly' ? '/mois' : '/an'}
+                    {getPlanPrice().toFixed(2).replace('.', ',')}€ {billingCycle === 'monthly' ? '/mois' : '/an'}
                   </Text>
                 </View>
               </View>
@@ -560,7 +534,7 @@ export default function SubscriptionScreen() {
                 activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={selectedPaymentMethod && !isProcessingPayment ? ['#8B5CF6', '#7C3AED'] : ['#D1D5DB', '#9CA3AF']}
+                  colors={selectedPaymentMethod && !isProcessingPayment ? ['#8B2F3F', '#7B1F2F'] : ['#D1D5DB', '#9CA3AF']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.payButtonGradient}
@@ -574,7 +548,7 @@ export default function SubscriptionScreen() {
                     </View>
                   ) : (
                     <Text style={styles.payButtonText}>
-                      Payer {getPlanPrice()}€ {billingCycle === 'monthly' ? '/mois' : '/an'}
+                      Payer {getPlanPrice().toFixed(2).replace('.', ',')}€ {billingCycle === 'monthly' ? '/mois' : '/an'}
                     </Text>
                   )}
                 </LinearGradient>
@@ -582,7 +556,6 @@ export default function SubscriptionScreen() {
             </ScrollView>
           </SafeAreaView>
         </Modal>
-        </SafeAreaView>
     </NavigationTransition>
   );
 }
@@ -590,16 +563,25 @@ export default function SubscriptionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.light,
   } as ViewStyle,
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background.light,
   } as ViewStyle,
-  headerGradient: {
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.lg,
+  header: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.xl,
   } as ViewStyle,
+  title: {
+    fontSize: Typography.sizes['3xl'],
+    fontWeight: Typography.weights.bold as any,
+    color: Colors.text.light,
+    marginBottom: Spacing.xs,
+  } as TextStyle,
+  subtitle: {
+    fontSize: Typography.sizes.base,
+    color: Colors.text.secondary,
+  } as TextStyle,
   header: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.xl,
@@ -626,7 +608,9 @@ const styles = StyleSheet.create({
   partnerModeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.background.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.lg,
@@ -652,7 +636,9 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   billingToggle: {
     flexDirection: 'row',
-    backgroundColor: Colors.background.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: BorderRadius.lg,
     padding: Spacing.xs,
     marginBottom: Spacing.lg,
@@ -667,7 +653,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   } as ViewStyle,
   toggleOptionActive: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#8B2F3F',
   } as ViewStyle,
   toggleText: {
     fontSize: Typography.sizes.base,
@@ -692,7 +678,9 @@ const styles = StyleSheet.create({
     color: Colors.text.light,
   } as TextStyle,
   planCard: {
-    backgroundColor: Colors.background.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: BorderRadius.xl,
     padding: Spacing.lg,
     marginBottom: Spacing.lg,
@@ -703,18 +691,18 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   } as ViewStyle,
   planCardPopular: {
-    borderColor: '#8B5CF6',
+    borderColor: '#8B2F3F',
     position: 'relative',
   } as ViewStyle,
   planCardSelected: {
-    borderColor: '#8B5CF6',
+    borderColor: '#8B2F3F',
   } as ViewStyle,
   popularBanner: {
     position: 'absolute',
     top: -Spacing.xs,
     left: Spacing.lg,
     right: Spacing.lg,
-    backgroundColor: '#EC4899',
+    backgroundColor: '#9B3F4F',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.lg,
@@ -786,8 +774,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   } as ViewStyle,
   radioButtonSelected: {
-    backgroundColor: '#8B5CF6',
-    borderColor: '#8B5CF6',
+    backgroundColor: '#8B2F3F',
+    borderColor: '#8B2F3F',
   } as ViewStyle,
   whyChooseSection: {
     marginTop: Spacing.lg,
@@ -857,7 +845,9 @@ const styles = StyleSheet.create({
   
   // Récapitulatif
   summaryCard: {
-    backgroundColor: Colors.background.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: BorderRadius.xl,
     padding: Spacing.lg,
     marginBottom: Spacing.xl,
@@ -913,7 +903,9 @@ const styles = StyleSheet.create({
   paymentMethodCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.background.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: BorderRadius.lg,
     padding: Spacing.md,
     marginBottom: Spacing.md,

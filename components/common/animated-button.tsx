@@ -119,7 +119,7 @@ export function AnimatedButton({
           <Ionicons 
             name={icon} 
             size={20} 
-            color={variant === 'outline' ? '#8B5CF6' : 'white'} 
+            color={variant === 'outline' ? '#8B2F3F' : 'white'} 
             style={styles.icon}
           />
         )}
@@ -134,29 +134,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 25,
     gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   secondaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
     gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   outlineButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#8B5CF6',
+    borderWidth: 1.5,
+    borderColor: '#8B2F3F',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
@@ -166,16 +170,19 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+    letterSpacing: 0.3,
   },
   secondaryText: {
     color: 'white',
     fontSize: 14,
     fontWeight: '500',
+    letterSpacing: 0.2,
   },
   outlineText: {
-    color: '#8B5CF6',
+    color: '#8B2F3F',
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
   icon: {
     marginRight: 4,
@@ -194,5 +201,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+    letterSpacing: 0.3,
   },
 });

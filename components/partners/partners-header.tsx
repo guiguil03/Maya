@@ -53,7 +53,7 @@ export function PartnersHeader({
 
   return (
     <LinearGradient
-      colors={['#6366F1', '#4F46E5']}
+      colors={['#8B2F3F', '#7B1F2F']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.container, style]}

@@ -1,11 +1,10 @@
 import { AnimatedButton } from '@/components/common/animated-button';
 import { NavigationTransition } from '@/components/common/navigation-transition';
-import { HomeHeader } from '@/components/headers/home-header';
-import { QRScanner } from '@/components/qr/qr-scanner';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
 import { useAuth } from '@/hooks/use-auth';
 import { QrService, QrTokenData } from '@/services/qr.service';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
 import { router } from 'expo-router';
@@ -13,6 +12,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   ScrollView,
   Share,
   StyleSheet,
@@ -22,14 +22,13 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
   const { user } = useAuth();
-  const [showQRScanner, setShowQRScanner] = useState(false);
   const [qrData, setQrData] = useState<QrTokenData | null>(null);
   const [qrLoading, setQrLoading] = useState(true);
   const [qrError, setQrError] = useState<string | null>(null);
-  const [qrSeed, setQrSeed] = useState(() => Date.now());
   const [qrCodeResponse, setQrCodeResponse] = useState<any | null>(null);
 
   // Vérifier si l'utilisateur est un partenaire
@@ -57,25 +56,36 @@ export default function HomeScreen() {
         hasToken: !!qrCode.token,
         hasImage: !!qrCode.imageBase64,
         hasUrl: !!qrCode.qrCodeUrl,
+        tokenPreview: qrCode.token ? qrCode.token.substring(0, 30) + '...' : 'undefined',
       });
       
       setQrCodeResponse(qrCode);
       
       // Utiliser le token pour l'affichage
-      const token: QrTokenData = {
-        token: qrCode.token,
-        expiresAt: qrCode.expiresAt,
-      };
-      setQrData(token);
-      setQrSeed(Date.now());
+      // IMPORTANT: Ce même token sera utilisé dans l'app ET dans le PDF
+      if (qrCode.token) {
+        const token: QrTokenData = {
+          token: qrCode.token,
+          expiresAt: qrCode.expiresAt,
+        };
+        setQrData(token);
+        console.log('🔑 [Home] Token sauvegardé pour affichage et PDF:', token.token.substring(0, 30) + '...');
+      } else {
+        throw new Error('Token manquant dans la réponse');
+      }
     } catch (error) {
       console.error('Erreur lors du chargement du QR Code:', error);
       // Fallback sur issueQrToken si getCurrentQrCode échoue
       try {
         const token = await QrService.issueQrToken(forceRefresh);
-        setQrData(token);
-        setQrSeed(Date.now());
-      } catch {
+        if (token?.token) {
+          setQrData(token);
+          setQrCodeResponse(null); // Réinitialiser pour forcer l'utilisation du fallback
+        } else {
+          throw new Error('Token manquant');
+        }
+      } catch (fallbackError) {
+        console.error('Erreur lors du fallback:', fallbackError);
         setQrError("Impossible de charger le QR Code.");
       }
     } finally {
@@ -102,8 +112,15 @@ export default function HomeScreen() {
 
     try {
       console.log('📤 [Home] Génération du PDF avec QR Code...');
+      console.log('🔑 [Home] Token utilisé pour le PDF:', qrData.token.substring(0, 30) + '...');
+      console.log('🔍 [Home] Vérification de la cohérence avec l\'app:', {
+        hasImageBase64: !!qrCodeResponse?.imageBase64,
+        hasQrCodeUrl: !!qrCodeResponse?.qrCodeUrl,
+        tokenMatch: qrData.token === (qrCodeResponse?.token || qrData.token),
+      });
       
       // Récupérer l'image base64 du QR Code ou générer une URL
+      // IMPORTANT: Utiliser exactement la même source que dans l'app pour garantir la cohérence
       let qrImageSrc = qrCodeResponse?.imageBase64;
       
       // Si on a l'image base64, s'assurer qu'elle a le bon format
@@ -118,9 +135,11 @@ export default function HomeScreen() {
         console.log('✅ [Home] Utilisation de l\'URL du QR Code:', qrImageSrc);
       } else {
         // Générer une URL de QR Code en ligne à partir du token
+        // Utiliser les mêmes paramètres que dans l'app pour garantir la cohérence
         console.log('🔄 [Home] Génération d\'une URL QR Code à partir du token...');
-        qrImageSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData.token)}`;
-        console.log('✅ [Home] URL QR Code générée:', qrImageSrc);
+        qrImageSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData.token)}&format=png&margin=1`;
+        console.log('✅ [Home] URL QR Code générée (même token que l\'app):', qrImageSrc);
+        console.log('🔑 [Home] Token utilisé:', qrData.token.substring(0, 30) + '...');
       }
 
       // Créer le HTML pour le PDF
@@ -154,7 +173,7 @@ export default function HomeScreen() {
               .logo {
                 font-size: 32px;
                 font-weight: bold;
-                color: #8B5CF6;
+                color: #8B2F3F;
                 margin-bottom: 10px;
               }
               .title {
@@ -308,58 +327,43 @@ export default function HomeScreen() {
     }
   }, [qrData, qrCodeResponse]);
 
-  const handleScanPartner = () => {
-    setShowQRScanner(true);
-  };
-
-  const handleQRScanned = (data: string) => {
-    console.log('📱 QR Code partenaire scanné:', data);
-    
-    // Extraire l'ID du partenaire du QR code
-    // Format attendu: "maya:partner:123" ou similaire
-    const partnerId = data.split(':').pop() || data;
-    
-    // Ici vous pouvez ajouter la logique pour:
-    // - Valider le partenaire avec l'API
-    // - Enregistrer la visite
-    // - Afficher les détails du partenaire
-    // - Rediriger vers la page du partenaire
-    
-    Alert.alert(
-      '✅ Visite enregistrée',
-      `Vous avez scanné le QR code du partenaire ${partnerId}. Votre visite a été enregistrée avec succès !`,
-      [{ text: 'Parfait', onPress: () => setShowQRScanner(false) }]
-    );
-  };
 
 
   return (
     <NavigationTransition>
-      <View style={styles.container}>
-        <HomeHeader
-          title={user ? `Bonjour, ${user.email.split('@')[0]} ✨` : 'Bonjour ✨'}
-          subtitle="Prêt•e à économiser aujourd'hui ?"
-          balanceEuros="47,80 €"
-          onNotificationPress={() => console.log('Notifications')}
-          onProfilePress={() => console.log('Profil')}
-        />
-
+      <LinearGradient
+        colors={Colors.gradients.primary}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.container}
+      >
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView 
           style={styles.scrollContainer}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
+            {/* Statistiques en haut */}
+            <View style={styles.statsContainer}>
+              <View style={[styles.statCard, styles.savingsCard]}>
+                <Text style={styles.statValue}>47,80 €</Text>
+                <Text style={styles.statLabel}>ÉCONOMIES TOTALES</Text>
+              </View>
+
+              <View style={[styles.statCard, styles.visitsCard]}>
+                <Text style={styles.statValue}>12</Text>
+                <Text style={styles.statLabel}>PARTENAIRES VISITÉS</Text>
+              </View>
+            </View>
+
+            {/* Accès rapide */}
           <View style={styles.quickActions}>
             <View style={styles.quickAction}>
-              <Ionicons name="scan" size={18} color="#8B5CF6" />
-              <Text style={styles.quickActionText}>Scanner</Text>
-            </View>
-            <View style={styles.quickAction}>
-              <Ionicons name="storefront" size={18} color="#10B981" />
+              <Ionicons name="storefront" size={24} color="#3B82F6" />
               <Text style={styles.quickActionText}>Partenaires</Text>
             </View>
             <View style={styles.quickAction}>
-              <Ionicons name="card" size={18} color="#F59E0B" />
+              <Ionicons name="card" size={24} color="#F59E0B" />
               <Text style={styles.quickActionText}>Abonnement</Text>
             </View>
           </View>
@@ -378,7 +382,7 @@ export default function HomeScreen() {
                   <Ionicons 
                     name="share-outline" 
                     size={20} 
-                    color={Colors.primary[600]} 
+                    color={Colors.text.light} 
                     style={(qrLoading || !qrData) && { opacity: 0.5 }}
                   />
                 </TouchableOpacity>
@@ -390,7 +394,7 @@ export default function HomeScreen() {
                   <Ionicons 
                     name="refresh" 
                     size={20} 
-                    color={Colors.primary[600]} 
+                    color={Colors.text.light} 
                     style={qrLoading && { opacity: 0.5 }}
                   />
                 </TouchableOpacity>
@@ -400,7 +404,7 @@ export default function HomeScreen() {
             <View style={styles.qrContainer}>
               {qrLoading ? (
                 <View style={styles.qrLoadingContainer}>
-                  <ActivityIndicator size="large" color={Colors.primary[600]} />
+                  <ActivityIndicator size="large" color={Colors.text.light} />
                   <Text style={styles.qrLoadingText}>Génération du QR Code...</Text>
                 </View>
               ) : qrError ? (
@@ -414,71 +418,67 @@ export default function HomeScreen() {
                     <Text style={styles.qrRetryText}>Réessayer</Text>
                   </TouchableOpacity>
                 </View>
-              ) : qrData ? (
-                <View style={styles.qrCode}>
-                  {/* QR Code généré à partir du token */}
-                  <View style={styles.qrGrid}>
-                    {Array.from({ length: 49 }, (_, i) => {
-                      const isEven = (i + qrSeed) % 2 === 0;
-                      return (
-                        <View
-                          key={`${qrSeed}-${i}`}
-                          style={[
-                            styles.qrSquare,
-                            { 
-                              backgroundColor: isEven ? '#8B5CF6' : 'white',
-                              borderRadius: 2,
-                            }
-                          ]}
-                        />
-                      );
-                    })}
+              ) : qrData?.token ? (
+                <View style={styles.qrCodeWrapper}>
+                  <View style={styles.qrCodeContainer}>
+                    {/* Priorité 1: Image base64 de l'API */}
+                    {qrCodeResponse?.imageBase64 ? (
+                      <Image
+                        source={{ 
+                          uri: qrCodeResponse.imageBase64.startsWith('data:') 
+                            ? qrCodeResponse.imageBase64 
+                            : `data:image/png;base64,${qrCodeResponse.imageBase64}`
+                        }}
+                        style={styles.qrCodeImage}
+                        resizeMode="contain"
+                      />
+                    ) : qrCodeResponse?.qrCodeUrl ? (
+                      /* Priorité 2: URL du QR Code de l'API */
+                      <Image
+                        source={{ uri: qrCodeResponse.qrCodeUrl }}
+                        style={styles.qrCodeImage}
+                        resizeMode="contain"
+                      />
+                    ) : qrData?.token ? (
+                      /* Priorité 3: Génération via API externe à partir du token */
+                      <Image
+                        source={{ 
+                          uri: `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrData.token)}&format=png&margin=1`
+                        }}
+                        style={styles.qrCodeImage}
+                        resizeMode="contain"
+                        onError={(error) => {
+                          console.error('❌ [Home] Erreur lors du chargement du QR Code:', error);
+                        }}
+                        onLoad={() => {
+                          console.log('✅ [Home] QR Code chargé avec succès');
+                        }}
+                      />
+                    ) : null}
                   </View>
-                  {/* Points de détection QR */}
-                  <View style={styles.qrCorner} />
-                  <View style={[styles.qrCorner, styles.qrCornerTopRight]} />
-                  <View style={[styles.qrCorner, styles.qrCornerBottomLeft]} />
+                  {qrData.expiresAt && (
+                    <View style={styles.qrExpiryContainer}>
+                      <Ionicons name="time-outline" size={14} color={Colors.text.secondary} />
+                      <Text style={styles.qrExpiryText}>
+                        Expire le {new Date(qrData.expiresAt).toLocaleDateString('fr-FR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               ) : null}
             </View>
 
-            <AnimatedButton
-              title="Scanner un partenaire"
-              onPress={handleScanPartner}
-              icon="scan"
-              style={styles.scanButton}
-              variant="solid"
-            />
-          </View>
-
-          <View style={styles.statsContainer}>
-            <View style={[styles.statCard, styles.savingsCard]}>
-              <View style={styles.statHeader}>
-                <Ionicons name="trending-up" size={20} color="#10B981" />
-                <Text style={[styles.statPeriod, styles.savingsPeriod]}>CE MOIS</Text>
-              </View>
-              <Text style={[styles.statValue, styles.savingsValue]}>47.8€</Text>
-              <Text style={[styles.statLabel, styles.savingsLabel]}>Économisées</Text>
-            </View>
-
-            <View style={[styles.statCard, styles.visitsCard]}>
-              <View style={styles.statHeader}>
-                <Ionicons name="location" size={20} color="#F59E0B" />
-                <Text style={[styles.statPeriod, styles.visitsPeriod]}>VISITES</Text>
-              </View>
-              <Text style={[styles.statValue, styles.visitsValue]}>8</Text>
-              <Text style={[styles.statLabel, styles.visitsLabel]}>Partenaires</Text>
-            </View>
           </View>
         </ScrollView>
-      </View>
+        </SafeAreaView>
+      </LinearGradient>
 
-      {/* Scanner QR Code */}
-      <QRScanner
-        visible={showQRScanner}
-        onClose={() => setShowQRScanner(false)}
-        onScan={handleQRScanned}
-      />
     </NavigationTransition>
   );
 }
@@ -486,7 +486,9 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.light,
+  } as ViewStyle,
+  safeArea: {
+    flex: 1,
   } as ViewStyle,
   scrollContainer: {
     flex: 1,
@@ -503,20 +505,20 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   quickAction: {
     flex: 1,
-    backgroundColor: Colors.background.card,
+    backgroundColor: Colors.background.cardDark,
     borderRadius: BorderRadius.lg,
     paddingVertical: Spacing.md,
     alignItems: 'center',
-    ...Shadows.sm,
+    ...Shadows.md,
   } as ViewStyle,
   quickActionText: {
     marginTop: 6,
-    color: Colors.text.primary,
+    color: Colors.text.light,
     fontSize: Typography.sizes.sm,
-    fontWeight: '600',
+    fontWeight: Typography.weights.semibold as any,
   } as TextStyle,
   qrCard: {
-    backgroundColor: Colors.background.card,
+    backgroundColor: Colors.background.cardDark,
     borderRadius: BorderRadius['2xl'],
     padding: Spacing.xl,
     marginBottom: Spacing.lg,
@@ -534,18 +536,22 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   qrActionButton: {
     padding: Spacing.sm,
-    backgroundColor: Colors.primary[50],
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   } as ViewStyle,
   qrReloadButton: {
     padding: Spacing.sm,
-    backgroundColor: Colors.primary[50],
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   } as ViewStyle,
   qrTitle: {
     fontSize: Typography.sizes.xl,
-    fontWeight: 'bold',
-    color: Colors.text.primary,
+    fontWeight: Typography.weights.bold as any,
+    color: Colors.text.light,
     marginBottom: Spacing.sm,
   } as TextStyle,
   qrSubtitle: {
@@ -592,110 +598,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.xl,
   } as ViewStyle,
+  qrCodeWrapper: {
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  } as ViewStyle,
+  qrCodeContainer: {
+    backgroundColor: 'white',
+    borderRadius: BorderRadius['2xl'],
+    padding: Spacing.lg,
+    borderWidth: 2,
+    borderColor: '#8B2F3F',
+    ...Shadows.lg,
+    shadowColor: '#8B2F3F',
+    shadowOpacity: 0.3,
+    elevation: 8,
+  } as ViewStyle,
+  qrCodeImage: {
+    width: 220,
+    height: 220,
+    borderRadius: BorderRadius.lg,
+  } as ViewStyle,
   qrCode: {
-    width: 180,
-    height: 180,
+    width: 220,
+    height: 220,
     backgroundColor: 'white',
     borderRadius: BorderRadius.lg,
     padding: Spacing.md,
-    borderWidth: 3,
-    borderColor: '#8B5CF6',
-    borderStyle: 'dashed',
-    position: 'relative',
-    ...Shadows.md,
-  } as ViewStyle,
-  qrGrid: {
-    flex: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
-  } as ViewStyle,
-  qrSquare: {
-    width: '12%',
-    height: '12%',
-    margin: '1%',
-  } as ViewStyle,
-  qrCorner: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    width: 24,
-    height: 24,
-    borderWidth: 3,
-    borderColor: '#8B5CF6',
-    borderTopLeftRadius: 4,
-  } as ViewStyle,
-  qrCornerTopRight: {
-    top: 8,
-    right: 8,
-    left: 'auto',
-    borderTopRightRadius: 4,
-    borderTopLeftRadius: 0,
-  } as ViewStyle,
-  qrCornerBottomLeft: {
-    bottom: 8,
-    top: 'auto',
-    borderBottomLeftRadius: 4,
-    borderTopLeftRadius: 0,
-  } as ViewStyle,
-  scanButton: {
-    marginTop: Spacing.md,
   } as ViewStyle,
   statsContainer: {
     flexDirection: 'row',
     gap: Spacing.md,
+    marginBottom: Spacing.xl,
   } as ViewStyle,
   statCard: {
     flex: 1,
-    backgroundColor: Colors.background.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: BorderRadius.xl,
     padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     ...Shadows.md,
   } as ViewStyle,
-  savingsCard: {
-    backgroundColor: Colors.background.card,
-  } as ViewStyle,
-  visitsCard: {
-    backgroundColor: Colors.background.card,
-  } as ViewStyle,
-  statHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-  } as ViewStyle,
-  statPeriod: {
-    fontSize: Typography.sizes.sm,
-    fontWeight: '600',
-  } as TextStyle,
-  savingsPeriod: {
-    color: '#10B981',
-  } as TextStyle,
-  visitsPeriod: {
-    color: '#F59E0B',
-  } as TextStyle,
+  savingsCard: {},
+  visitsCard: {},
   statValue: {
-    fontSize: Typography.sizes['2xl'],
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontSize: Typography.sizes['3xl'],
+    fontWeight: Typography.weights.bold as any,
+    color: Colors.text.light,
     marginBottom: Spacing.xs,
   } as TextStyle,
-  savingsValue: {
-    color: '#10B981',
-  } as TextStyle,
-  visitsValue: {
-    color: '#F59E0B',
-  } as TextStyle,
   statLabel: {
-    fontSize: Typography.sizes.sm,
+    fontSize: Typography.sizes.xs,
     color: Colors.text.secondary,
-    textAlign: 'center',
-  } as TextStyle,
-  savingsLabel: {
-    color: '#10B981',
-  } as TextStyle,
-  visitsLabel: {
-    color: '#F59E0B',
+    fontWeight: Typography.weights.medium as any,
+    letterSpacing: 0.5,
   } as TextStyle,
 });

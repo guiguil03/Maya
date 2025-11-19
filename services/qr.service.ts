@@ -146,13 +146,13 @@ export const QrService = {
 
         if (error.message.includes('HTTP 403')) {
           console.warn('⚠️ [QR Service] Accès refusé (403), utilisation d\'un QR local de fallback');
-          const fallback: QrTokenData = {
-            token: `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-            expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-          };
-          await saveQrToken(fallback);
+        const fallback: QrTokenData = {
+          token: `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+          expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        };
+        await saveQrToken(fallback);
           console.log('💾 [QR Service] Token de fallback sauvegardé');
-          return fallback;
+        return fallback;
         }
       }
       throw error;
@@ -261,10 +261,10 @@ export const QrService = {
 
     try {
       const startTime = Date.now();
-      const response = await apiCall<any>('/qr/current', {
-        method: 'GET',
-        headers,
-      }, 0, QR_API_BASE_URL);
+    const response = await apiCall<any>('/qr/current', {
+      method: 'GET',
+      headers,
+    }, 0, QR_API_BASE_URL);
       const duration = Date.now() - startTime;
 
       console.log('✅ [QR Service] Réponse API reçue', {
@@ -284,19 +284,19 @@ export const QrService = {
         });
       }
 
-      const qrData: QrCodeResponse = {
-        token: response?.token,
-        expiresAt: response?.expiresAt ?? new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-        imageBase64: response?.imageBase64,
-        qrCodeUrl: response?.qrCodeUrl,
-      };
+    const qrData: QrCodeResponse = {
+      token: response?.token,
+      expiresAt: response?.expiresAt ?? new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      imageBase64: response?.imageBase64,
+      qrCodeUrl: response?.qrCodeUrl,
+    };
 
-      if (qrData.token) {
+    if (qrData.token) {
         console.log('💾 [QR Service] Sauvegarde du token en cache');
-        await saveQrToken({
-          token: qrData.token,
-          expiresAt: qrData.expiresAt,
-        });
+      await saveQrToken({
+        token: qrData.token,
+        expiresAt: qrData.expiresAt,
+      });
         console.log('✅ [QR Service] Token sauvegardé');
       } else {
         console.warn('⚠️ [QR Service] Aucun token dans la réponse, pas de sauvegarde');
@@ -308,7 +308,7 @@ export const QrService = {
         hasUrl: !!qrData.qrCodeUrl,
       });
 
-      return qrData;
+    return qrData;
     } catch (error) {
       console.error('❌ [QR Service] Erreur lors de la récupération du QR Code actuel:', error);
       if (error instanceof Error) {
@@ -324,34 +324,44 @@ export const QrService = {
   /**
    * Valide un QR Code scanné (côté partenaire)
    * @param qrToken - Le token QR à valider (peut être extrait d'un texte partagé)
-   * @param partnerId - ID du partenaire (optionnel, peut être récupéré depuis le token utilisateur)
-   * @param storeId - ID du magasin (optionnel)
-   * @param operatorUserId - ID de l'opérateur (optionnel, peut être récupéré depuis le token utilisateur)
-   * @param amountGross - Montant brut de la transaction (optionnel)
-   * @param personsCount - Nombre de personnes (optionnel)
+   * @param partnerId - ID du partenaire (requis selon l'API)
+   * @param storeId - ID du magasin (requis selon l'API)
+   * @param operatorUserId - ID de l'opérateur (requis selon l'API)
+   * @param amountGross - Montant brut de la transaction (défaut: 0)
+   * @param personsCount - Nombre de personnes (défaut: 0)
    */
   validateQrToken: async (
     qrToken: string,
     partnerId?: string,
     storeId?: string,
     operatorUserId?: string,
-    amountGross?: number,
-    personsCount?: number
+    amountGross: number = 0,
+    personsCount: number = 0
   ): Promise<any> => {
     console.log('✅ [QR Service] validateQrToken appelé');
     
-    if (!qrToken) {
-      console.error('❌ [QR Service] Token QR manquant');
+    // Validation des paramètres requis
+    if (!qrToken || qrToken.trim() === '') {
+      console.error('❌ [QR Service] Token QR manquant ou vide');
       throw new Error('Token QR requis');
     }
 
     // Nettoyer le token si il contient du texte supplémentaire (ex: "Mon QR Code Maya\n\nToken: xxx")
-    let cleanToken = qrToken;
+    let cleanToken = qrToken.trim();
     if (qrToken.includes('Token:')) {
       const tokenMatch = qrToken.match(/Token:\s*([^\s\n]+)/);
       if (tokenMatch && tokenMatch[1]) {
-        cleanToken = tokenMatch[1];
+        cleanToken = tokenMatch[1].trim();
         console.log('🧹 [QR Service] Token nettoyé depuis le texte partagé');
+      }
+    }
+
+    // Si le token contient un préfixe (ex: "maya:token:xxx"), extraire seulement le token
+    if (cleanToken.includes(':') && !cleanToken.includes('Token:')) {
+      const parts = cleanToken.split(':');
+      if (parts.length > 1) {
+        cleanToken = parts[parts.length - 1].trim();
+        console.log('🧹 [QR Service] Token extrait depuis le format avec préfixe');
       }
     }
 
@@ -361,55 +371,82 @@ export const QrService = {
       tokenLength: cleanToken.length,
       hasPartnerId: !!partnerId,
       hasStoreId: !!storeId,
+      hasOperatorUserId: !!operatorUserId,
     });
 
+    // Récupérer le token d'authentification
     const token = await AuthService.getAccessToken();
-    console.log('🔑 [QR Service] Token d\'authentification:', token ? token.substring(0, 20) + '...' : 'Aucun');
+    if (!token) {
+      console.error('❌ [QR Service] Aucun token d\'authentification disponible');
+      throw new Error('Authentification requise. Veuillez vous reconnecter.');
+    }
+    console.log('🔑 [QR Service] Token d\'authentification:', token.substring(0, 20) + '...');
+
+    // Essayer de récupérer les IDs manquants depuis l'utilisateur connecté
+    let finalPartnerId = partnerId;
+    let finalOperatorUserId = operatorUserId;
+    
+    if (!finalPartnerId || !finalOperatorUserId) {
+      try {
+        console.log('🔄 [QR Service] Récupération des IDs manquants depuis l\'utilisateur...');
+        const userInfo = await AuthService.getCurrentUserInfo();
+        if (!finalPartnerId) {
+          finalPartnerId = (userInfo as any)?.partnerId || userInfo.id;
+          console.log('✅ [QR Service] partnerId récupéré:', finalPartnerId ? finalPartnerId.substring(0, 20) + '...' : 'undefined');
+        }
+        if (!finalOperatorUserId) {
+          finalOperatorUserId = userInfo.id;
+          console.log('✅ [QR Service] operatorUserId récupéré:', finalOperatorUserId ? finalOperatorUserId.substring(0, 20) + '...' : 'undefined');
+        }
+      } catch (error) {
+        console.warn('⚠️ [QR Service] Impossible de récupérer les IDs depuis l\'utilisateur:', error);
+      }
+    }
+
+    // Validation finale des paramètres requis
+    if (!finalPartnerId) {
+      console.error('❌ [QR Service] partnerId manquant');
+      throw new Error('ID du partenaire requis');
+    }
+    if (!storeId) {
+      console.error('❌ [QR Service] storeId manquant');
+      throw new Error('ID du magasin requis');
+    }
+    if (!finalOperatorUserId) {
+      console.error('❌ [QR Service] operatorUserId manquant');
+      throw new Error('ID de l\'opérateur requis');
+    }
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
     };
 
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-      console.log('✅ [QR Service] Header Authorization ajouté');
-    } else {
-      console.warn('⚠️ [QR Service] Aucun token d\'authentification disponible');
-    }
-
-    // Préparer le body selon l'API
-    const requestBody: any = {
+    // Préparer le body selon les spécifications de l'API
+    // Tous les champs sont requis selon la documentation
+    const requestBody = {
+      partnerId: finalPartnerId,
+      storeId: storeId,
+      operatorUserId: finalOperatorUserId,
       qrToken: cleanToken,
+      amountGross: amountGross ?? 0,
+      personsCount: personsCount ?? 0,
     };
 
-    // Ajouter les paramètres optionnels s'ils sont fournis
-    if (partnerId) {
-      requestBody.partnerId = partnerId;
-    }
-    if (storeId) {
-      requestBody.storeId = storeId;
-    }
-    if (operatorUserId) {
-      requestBody.operatorUserId = operatorUserId;
-    }
-    if (amountGross !== undefined) {
-      requestBody.amountGross = amountGross;
-    }
-    if (personsCount !== undefined) {
-      requestBody.personsCount = personsCount;
-    }
-
-    console.log('📤 [QR Service] Body de la requête:', {
+    console.log('📤 [QR Service] Body de la requête complet:', {
       hasQrToken: !!requestBody.qrToken,
+      qrTokenLength: requestBody.qrToken.length,
       hasPartnerId: !!requestBody.partnerId,
       hasStoreId: !!requestBody.storeId,
       hasOperatorUserId: !!requestBody.operatorUserId,
       amountGross: requestBody.amountGross,
       personsCount: requestBody.personsCount,
+      bodyPreview: JSON.stringify(requestBody, null, 2),
     });
 
     console.log('🌐 [QR Service] Appel API: POST /api/qr/validate');
     console.log('🌐 [QR Service] Base URL:', QR_API_BASE_URL);
+    console.log('🌐 [QR Service] URL complète:', `${QR_API_BASE_URL}/qr/validate`);
 
     try {
       const startTime = Date.now();
@@ -425,9 +462,13 @@ export const QrService = {
       );
       const duration = Date.now() - startTime;
 
-      console.log('✅ [QR Service] Validation réussie', {
+      console.log('✅ [QR Service] Validation réussie (200 OK)', {
         duration: duration + 'ms',
-        response: JSON.stringify(response, null, 2),
+        status: '200 OK',
+        hasResponse: !!response,
+        responseType: typeof response,
+        responseKeys: response ? Object.keys(response) : [],
+        fullResponse: JSON.stringify(response, null, 2),
       });
 
       return response;
@@ -437,7 +478,21 @@ export const QrService = {
         console.error('❌ [QR Service] Détails de l\'erreur:', {
           message: error.message,
           name: error.name,
+          stack: error.stack?.substring(0, 300),
         });
+        
+        // Améliorer les messages d'erreur selon le type
+        if (error.message.includes('HTTP 400')) {
+          throw new Error('Requête invalide. Vérifiez que tous les paramètres sont corrects.');
+        } else if (error.message.includes('HTTP 401')) {
+          throw new Error('Authentification requise. Veuillez vous reconnecter.');
+        } else if (error.message.includes('HTTP 403')) {
+          throw new Error('Accès refusé. Vous n\'avez pas les permissions nécessaires.');
+        } else if (error.message.includes('HTTP 404')) {
+          throw new Error('QR Code non trouvé ou expiré.');
+        } else if (error.message.includes('HTTP 500')) {
+          throw new Error('Erreur serveur. Veuillez réessayer plus tard.');
+        }
       }
       throw error;
     }

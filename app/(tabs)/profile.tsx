@@ -1,11 +1,11 @@
 import { DebugUsersViewer } from '@/components/debug-users-viewer';
 import { NavigationTransition } from '@/components/common/navigation-transition';
-import { ProfileHeader } from '@/components/headers/profile-header';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
 import { useAuth } from '@/hooks/use-auth';
 import { AuthService } from '@/services/auth.service';
 import { ClientService } from '@/services/client.service';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -22,6 +22,7 @@ import {
     View,
     ViewStyle
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
   const [pushEnabled, setPushEnabled] = useState(true);
@@ -112,25 +113,28 @@ export default function ProfileScreen() {
 
   return (
     <NavigationTransition>
-      <View style={styles.container}>
-        <ProfileHeader
-          title="Mon Profil"
-          subtitle="Gérez votre compte"
-          userEmail={user?.email}
-          onSettingsPress={() => console.log('Settings')}
-          onNotificationPress={() => console.log('Notifications')}
-        />
+      <LinearGradient
+        colors={Colors.gradients.primary}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.container}
+      >
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Mon Profil</Text>
+            <Text style={styles.subtitle}>Gérez votre compte</Text>
+          </View>
 
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={{ paddingBottom: Spacing['2xl'] }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          refreshControl={
-            <RefreshControl refreshing={loading} onRefresh={handleRefresh} tintColor={Colors.primary[600]} />
-          }
-        >
+          <ScrollView
+            style={styles.content}
+            contentContainerStyle={{ paddingBottom: Spacing['2xl'] }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            refreshControl={
+              <RefreshControl refreshing={loading} onRefresh={handleRefresh} tintColor={Colors.primary[600]} />
+            }
+          >
           {loading && !userInfo ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={Colors.primary[600]} />
@@ -431,11 +435,11 @@ export default function ProfileScreen() {
               style={[styles.menuItem, { backgroundColor: '#F5F3FF', borderBottomWidth: 0 }]} 
               onPress={() => setShowDebugUsers(true)}
             >
-              <Ionicons name="bug-outline" size={22} color="#8B5CF6" />
-              <Text style={[styles.menuText, { color: '#8B5CF6' }]}>
+              <Ionicons name="bug-outline" size={22} color="#8B2F3F" />
+              <Text style={[styles.menuText, { color: '#8B2F3F' }]}>
                 👤 Voir tous les utilisateurs (Debug)
               </Text>
-              <Ionicons name="chevron-forward" size={20} color="#8B5CF6" />
+              <Ionicons name="chevron-forward" size={20} color="#8B2F3F" />
             </TouchableOpacity>
           </View>
 
@@ -448,14 +452,15 @@ export default function ProfileScreen() {
               </View>
             </>
           )}
-        </ScrollView>
+          </ScrollView>
+        </SafeAreaView>
 
         {/* Modal de debug des utilisateurs */}
         <DebugUsersViewer 
           visible={showDebugUsers} 
           onClose={() => setShowDebugUsers(false)} 
         />
-      </View>
+      </LinearGradient>
     </NavigationTransition>
   );
 }
@@ -463,7 +468,9 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.light,
+  } as ViewStyle,
+  safeArea: {
+    flex: 1,
   } as ViewStyle,
   header: {
     paddingHorizontal: Spacing.lg,
@@ -472,8 +479,8 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   title: {
     fontSize: Typography.sizes['3xl'],
-    fontWeight: 'bold' as any,
-    color: Colors.text.primary,
+    fontWeight: Typography.weights.bold as any,
+    color: Colors.text.light,
     marginBottom: Spacing.xs,
   } as TextStyle,
   subtitle: {
@@ -482,18 +489,17 @@ const styles = StyleSheet.create({
   } as TextStyle,
   content: {
     flex: 1,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    backgroundColor: Colors.background.light,
   } as ViewStyle,
   profileCard: {
-    backgroundColor: Colors.background.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: BorderRadius.xl,
     padding: Spacing.xl,
     alignItems: 'center',
     flexDirection: 'row',
     gap: Spacing.lg,
     marginBottom: Spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     ...Shadows.md,
   } as ViewStyle,
   avatarBadge: {
@@ -539,10 +545,12 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
   } as TextStyle,
   sectionCard: {
-    backgroundColor: Colors.background.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: BorderRadius.xl,
     padding: Spacing.lg,
     marginBottom: Spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     ...Shadows.sm,
   } as ViewStyle,
   sectionHeader: {
@@ -554,10 +562,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: Typography.sizes['2xl'],
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.text.light,
   } as TextStyle,
   ghostButton: {
-    backgroundColor: Colors.background.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderWidth: 1,
     borderColor: Colors.primary[200],
     paddingHorizontal: Spacing.md,
@@ -602,7 +610,7 @@ const styles = StyleSheet.create({
   paymentItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.background.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderWidth: 1,
     borderColor: Colors.primary[100],
     borderRadius: BorderRadius.lg,
@@ -657,8 +665,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary[100],
   } as ViewStyle,
   menuSection: {
-    backgroundColor: Colors.background.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     paddingVertical: Spacing.sm,
     ...Shadows.sm,
   } as ViewStyle,
@@ -731,25 +741,26 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     flex: 1,
   } as TextStyle,
+  infoList: {
+    gap: Spacing.sm,
+  } as ViewStyle,
   infoRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
     gap: Spacing.md,
-  } as ViewStyle,
-  infoContent: {
-    flex: 1,
   } as ViewStyle,
   infoLabel: {
     fontSize: Typography.sizes.sm,
-    color: Colors.text.secondary,
-    marginBottom: 4,
-    fontWeight: '600',
+    color: Colors.text.muted,
+    minWidth: 120,
+    fontWeight: Typography.weights.medium as any,
   } as TextStyle,
   infoValue: {
     fontSize: Typography.sizes.base,
-    color: Colors.text.primary,
-    fontWeight: '500',
+    color: Colors.text.light,
+    fontWeight: Typography.weights.medium as any,
+    flex: 1,
   } as TextStyle,
   loadingSection: {
     flexDirection: 'row',

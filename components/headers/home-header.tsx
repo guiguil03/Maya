@@ -32,7 +32,7 @@ export function HomeHeader({
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <LinearGradient
-        colors={['#8B5CF6', '#6366F1']}
+        colors={['#8B2F3F', '#7B1F2F']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.container, style]}
@@ -78,7 +78,7 @@ export function HomeHeader({
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#8B2F3F',
   } as ViewStyle,
   container: {
     paddingTop: Spacing.md,

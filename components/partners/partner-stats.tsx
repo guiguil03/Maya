@@ -1,129 +1,329 @@
-import { BorderRadius, Colors, Spacing, Typography } from '@/constants/design-system';
+import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import {
-    StyleSheet,
-    Text,
-    TextStyle,
-    View,
-    ViewStyle,
-} from 'react-native';
+import { StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
 
-interface PartnerStatsProps {
-  totalPartners: number;
-  nearbyPartners: number;
-  activePromotions: number;
-  averageRating: number;
-  style?: any;
-}
-
-export function PartnerStats({ 
-  totalPartners, 
-  nearbyPartners, 
-  activePromotions, 
-  averageRating,
-  style 
-}: PartnerStatsProps) {
-  const stats = [
-    {
-      label: 'Total',
-      value: totalPartners,
-      icon: 'business' as const,
-      color: Colors.primary[600],
-      backgroundColor: Colors.primary[50],
-    },
-    {
-      label: 'Proche',
-      value: nearbyPartners,
-      icon: 'location' as const,
-      color: Colors.status.success,
-      backgroundColor: Colors.status.success + '15',
-    },
-    {
-      label: 'Promos',
-      value: activePromotions,
-      icon: 'gift' as const,
-      color: Colors.accent.orange,
-      backgroundColor: Colors.accent.orange + '15',
-    },
-    {
-      label: 'Note moy.',
-      value: averageRating.toFixed(1),
-      icon: 'star' as const,
-      color: Colors.accent.gold,
-      backgroundColor: Colors.accent.gold + '15',
-    },
-  ];
-
+export function PartnerStats() {
   return (
-    <View style={[styles.container, style]}>
-      <Text style={styles.title}>Statistiques</Text>
-      <View style={styles.statsGrid}>
-        {stats.map((stat, index) => (
-          <View key={index} style={styles.statCard}>
-            <View style={[
-              styles.iconContainer,
-              { backgroundColor: stat.backgroundColor }
-            ]}>
-              <Ionicons 
-                name={stat.icon} 
-                size={20} 
-                color={stat.color} 
-              />
+    <View style={styles.statsSection}>
+      <Text style={styles.sectionTitle}>Statistiques détaillées</Text>
+      
+      {/* Graphiques de revenus */}
+      <View style={styles.statsCard}>
+        <Text style={styles.statsCardTitle}>Évolution des revenus</Text>
+        <View style={styles.chartContainer}>
+          <View style={styles.chartBars}>
+            {[65, 80, 45, 90, 70, 85, 95].map((height, index) => (
+              <View key={index} style={styles.chartBarWrapper}>
+                <View style={[styles.chartBar, { height: `${height}%` }]} />
+                <Text style={styles.chartLabel}>{['L', 'M', 'M', 'J', 'V', 'S', 'D'][index]}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </View>
+
+      {/* Statistiques par période */}
+      <View style={styles.periodStatsGrid}>
+        <View style={styles.periodStatCard}>
+          <View style={styles.periodStatHeader}>
+            <Ionicons name="calendar" size={18} color={Colors.primary[600]} />
+            <Text style={styles.periodStatLabel}>Cette semaine</Text>
+          </View>
+          <Text style={styles.periodStatValue}>142.50€</Text>
+          <View style={styles.periodStatTrend}>
+            <Ionicons name="trending-up" size={16} color="#10B981" />
+            <Text style={styles.periodStatTrendText}>+12% vs semaine dernière</Text>
+          </View>
+        </View>
+        <View style={styles.periodStatCard}>
+          <View style={styles.periodStatHeader}>
+            <Ionicons name="calendar-outline" size={18} color={Colors.primary[600]} />
+            <Text style={styles.periodStatLabel}>Ce mois</Text>
+          </View>
+          <Text style={styles.periodStatValue}>587.30€</Text>
+          <View style={styles.periodStatTrend}>
+            <Ionicons name="trending-up" size={16} color="#10B981" />
+            <Text style={styles.periodStatTrendText}>+8% vs mois dernier</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Indicateurs de performance */}
+      <View style={styles.performanceCard}>
+        <Text style={styles.statsCardTitle}>Indicateurs de performance</Text>
+        <View style={styles.performanceGrid}>
+          <View style={styles.performanceItem}>
+            <View style={styles.performanceIcon}>
+              <Ionicons name="people" size={20} color="#3B82F6" />
             </View>
-            <Text style={styles.statValue}>{stat.value}</Text>
-            <Text style={styles.statLabel}>{stat.label}</Text>
+            <Text style={styles.performanceValue}>24</Text>
+            <Text style={styles.performanceLabel}>Clients uniques</Text>
+          </View>
+          <View style={styles.performanceItem}>
+            <View style={[styles.performanceIcon, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="time" size={20} color="#F59E0B" />
+            </View>
+            <Text style={styles.performanceValue}>2.3</Text>
+            <Text style={styles.performanceLabel}>Visites moy./client</Text>
+          </View>
+          <View style={styles.performanceItem}>
+            <View style={[styles.performanceIcon, { backgroundColor: '#D1FAE5' }]}>
+              <Ionicons name="cash" size={20} color="#10B981" />
+            </View>
+            <Text style={styles.performanceValue}>24.45€</Text>
+            <Text style={styles.performanceLabel}>Panier moyen</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Top clients */}
+      <View style={styles.statsCard}>
+        <Text style={styles.statsCardTitle}>Top clients</Text>
+        {[
+          { name: 'Marie Dupont', visits: 12, total: 186.50 },
+          { name: 'Jean Martin', visits: 8, total: 124.75 },
+          { name: 'Sophie Bernard', visits: 6, total: 98.00 },
+        ].map((client, index) => (
+          <View key={index} style={styles.topClientItem}>
+            <View style={styles.topClientRank}>
+              <Text style={styles.topClientRankText}>#{index + 1}</Text>
+            </View>
+            <View style={styles.topClientInfo}>
+              <Text style={styles.topClientName}>{client.name}</Text>
+              <Text style={styles.topClientDetails}>
+                {client.visits} visites • {client.total.toFixed(2)}€
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={Colors.text.secondary} />
           </View>
         ))}
+      </View>
+
+      {/* Heures de pointe */}
+      <View style={styles.statsCard}>
+        <Text style={styles.statsCardTitle}>Heures de pointe</Text>
+        <View style={styles.peakHoursContainer}>
+          {[
+            { hour: '10h', value: 15 },
+            { hour: '12h', value: 45 },
+            { hour: '14h', value: 30 },
+            { hour: '18h', value: 60 },
+            { hour: '20h', value: 25 },
+          ].map((item, index) => (
+            <View key={index} style={styles.peakHourItem}>
+              <Text style={styles.peakHourLabel}>{item.hour}</Text>
+              <View style={styles.peakHourBarContainer}>
+                <View style={[styles.peakHourBar, { width: `${item.value}%` }]} />
+              </View>
+              <Text style={styles.peakHourValue}>{item.value}</Text>
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: Colors.background.card,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.lg,
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+  statsSection: {
+    marginBottom: Spacing.lg,
   } as ViewStyle,
-  title: {
+  sectionTitle: {
     fontSize: Typography.sizes.lg,
-    fontWeight: '600',
-    color: Colors.text.primary,
+    fontWeight: '700',
+    color: Colors.text.light,
     marginBottom: Spacing.md,
   } as TextStyle,
-  statsGrid: {
+  statsCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
+    ...Shadows.md,
+  } as ViewStyle,
+  statsCardTitle: {
+    fontSize: Typography.sizes.lg,
+    fontWeight: '700',
+    color: Colors.text.light,
+    marginBottom: Spacing.md,
+  } as TextStyle,
+  chartContainer: {
+    marginTop: Spacing.md,
+  } as ViewStyle,
+  chartBars: {
     flexDirection: 'row',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
+    height: 150,
+    paddingHorizontal: Spacing.sm,
   } as ViewStyle,
-  statCard: {
-    alignItems: 'center',
+  chartBarWrapper: {
     flex: 1,
+    alignItems: 'center',
+    height: '100%',
+    justifyContent: 'flex-end',
   } as ViewStyle,
-  iconContainer: {
+  chartBar: {
+    width: '80%',
+    backgroundColor: '#F59E0B',
+    borderRadius: BorderRadius.sm,
+    minHeight: 20,
+    marginBottom: Spacing.xs,
+  } as ViewStyle,
+  chartLabel: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.text.secondary,
+    fontWeight: '600',
+  } as TextStyle,
+  periodStatsGrid: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginBottom: Spacing.md,
+  } as ViewStyle,
+  periodStatCard: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.md,
+    ...Shadows.md,
+  } as ViewStyle,
+  periodStatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: Spacing.xs,
+  } as ViewStyle,
+  periodStatLabel: {
+    fontSize: Typography.sizes.sm,
+    color: Colors.text.secondary,
+    marginBottom: Spacing.xs,
+  } as TextStyle,
+  periodStatValue: {
+    fontSize: Typography.sizes.xl,
+    fontWeight: '800',
+    color: Colors.text.light,
+    marginBottom: Spacing.xs,
+  } as TextStyle,
+  periodStatTrend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  } as ViewStyle,
+  periodStatTrendText: {
+    fontSize: Typography.sizes.sm,
+    fontWeight: '700',
+    color: '#10B981',
+  } as TextStyle,
+  performanceCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
+    ...Shadows.md,
+  } as ViewStyle,
+  performanceGrid: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginTop: Spacing.md,
+  } as ViewStyle,
+  performanceItem: {
+    flex: 1,
+    alignItems: 'center',
+  } as ViewStyle,
+  performanceIcon: {
     width: 40,
     height: 40,
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.full,
+    backgroundColor: '#DBEAFE',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.sm,
   } as ViewStyle,
-  statValue: {
+  performanceValue: {
     fontSize: Typography.sizes.xl,
-    fontWeight: '700',
-    color: Colors.text.primary,
+    fontWeight: '800',
+    color: Colors.text.light,
     marginBottom: Spacing.xs,
   } as TextStyle,
-  statLabel: {
-    fontSize: Typography.sizes.sm,
+  performanceLabel: {
+    fontSize: Typography.sizes.xs,
     color: Colors.text.secondary,
     textAlign: 'center',
+    fontWeight: '500',
+  } as TextStyle,
+  topClientItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.primary[100],
+  } as ViewStyle,
+  topClientRank: {
+    width: 32,
+    height: 32,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.primary[50],
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+  } as ViewStyle,
+  topClientRankText: {
+    fontSize: Typography.sizes.sm,
+    fontWeight: '800',
+    color: Colors.primary[600],
+  } as TextStyle,
+  topClientInfo: {
+    flex: 1,
+  } as ViewStyle,
+  topClientName: {
+    fontSize: Typography.sizes.base,
+    fontWeight: '700',
+    color: Colors.text.light,
+    marginBottom: 2,
+  } as TextStyle,
+  topClientDetails: {
+    fontSize: Typography.sizes.sm,
+    color: Colors.text.secondary,
+  } as TextStyle,
+  peakHoursContainer: {
+    marginTop: Spacing.md,
+  } as ViewStyle,
+  peakHourItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+    gap: Spacing.sm,
+  } as ViewStyle,
+  peakHourLabel: {
+    width: 40,
+    fontSize: Typography.sizes.sm,
+    fontWeight: '600',
+    color: Colors.text.secondary,
+  } as TextStyle,
+  peakHourBarContainer: {
+    flex: 1,
+    height: 8,
+    backgroundColor: Colors.primary[100],
+    borderRadius: BorderRadius.full,
+    overflow: 'hidden',
+  } as ViewStyle,
+  peakHourBar: {
+    height: '100%',
+    backgroundColor: '#F59E0B',
+    borderRadius: BorderRadius.full,
+  } as ViewStyle,
+  peakHourValue: {
+    width: 30,
+    fontSize: Typography.sizes.sm,
+    fontWeight: '700',
+    color: Colors.text.light,
+    textAlign: 'right',
   } as TextStyle,
 });

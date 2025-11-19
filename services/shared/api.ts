@@ -28,7 +28,19 @@ export const apiCall = async <T>(
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => '');
-    throw new Error(`HTTP ${response.status}: ${errorText}`);
+    const errorMessage = `HTTP ${response.status}: ${errorText}`;
+    
+    // Si erreur 401, logger plus d'informations pour le debug
+    if (response.status === 401) {
+      console.error('❌ [API] Erreur 401 - Non autorisé:', {
+        url,
+        method: finalOptions.method || 'GET',
+        hasAuthHeader: !!(finalOptions.headers as Record<string, string>)?.Authorization,
+        authHeaderPreview: (finalOptions.headers as Record<string, string>)?.Authorization?.substring(0, 30) + '...',
+      });
+    }
+    
+    throw new Error(errorMessage);
   }
 
   if (response.status === 204) {

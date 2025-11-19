@@ -1,9 +1,9 @@
 import { NavigationTransition } from '@/components/common/navigation-transition';
 import { PartnerCard } from '@/components/partners/partner-card';
-import { PartnersHeader } from '@/components/partners/partners-header';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
 import { StoresService } from '@/services/stores.service';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -560,23 +560,24 @@ export default function PartnersScreen() {
 
   return (
     <NavigationTransition>
-      <View style={styles.container}>
-        {/* Header avec statistiques */}
-        <PartnersHeader
-          title="Partenaires"
-          subtitle={`${filteredPartners.length} trouvé${filteredPartners.length > 1 ? 's' : ''}`}
-          totalPartners={stats.totalPartners}
-          nearbyPartners={stats.nearbyPartners}
-          onLocationPress={() => console.log('Location pressed')}
-          onNotificationPress={() => console.log('Notification pressed')}
-        />
+      <LinearGradient
+        colors={Colors.gradients.primary}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.container}
+      >
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Explorer ton réseau</Text>
+            <Text style={styles.subtitle}>Afficheur intelligent des partenaires Maya</Text>
+          </View>
 
-        {/* Recherche moderne */}
-        <View style={styles.searchSection}>
+          {/* Recherche moderne */}
+          <View style={styles.searchSection}>
           {/* Input de recherche moderne */}
           <View style={styles.searchInputContainer}>
             <View style={styles.searchIconWrapper}>
-              <Ionicons name="search" size={18} color={Colors.primary[600]} />
+              <Ionicons name="search" size={18} color={Colors.text.light} />
             </View>
             <TextInput
               style={styles.searchInput}
@@ -868,7 +869,7 @@ export default function PartnersScreen() {
           <SafeAreaView style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <TouchableOpacity style={styles.closeButton} onPress={closePartnerModal}>
-                <Ionicons name="close" size={24} color={Colors.text.primary} />
+                <Ionicons name="close" size={24} color={Colors.text.light} />
               </TouchableOpacity>
               <Text style={styles.modalTitle}>Détails du partenaire</Text>
             </View>
@@ -944,7 +945,8 @@ export default function PartnersScreen() {
             )}
           </SafeAreaView>
         </Modal>
-      </View>
+        </SafeAreaView>
+      </LinearGradient>
     </NavigationTransition>
   );
 }
@@ -952,23 +954,40 @@ export default function PartnersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.light,
   } as ViewStyle,
-  
+  safeArea: {
+    flex: 1,
+  } as ViewStyle,
+  header: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.md,
+  } as ViewStyle,
+  title: {
+    fontSize: Typography.sizes['3xl'],
+    fontWeight: Typography.weights.bold as any,
+    color: Colors.text.light,
+    marginBottom: Spacing.xs,
+  } as TextStyle,
+  subtitle: {
+    fontSize: Typography.sizes.base,
+    color: Colors.text.secondary,
+  } as TextStyle,
   // Section recherche moderne
   searchSection: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
     paddingBottom: Spacing.md,
     gap: Spacing.md,
-    backgroundColor: Colors.background.light,
   } as ViewStyle,
   
   // Input de recherche moderne
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: BorderRadius.xl,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
@@ -992,7 +1011,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: Colors.text.primary,
+    color: Colors.text.light,
     padding: 0,
     fontWeight: '500',
   } as TextStyle,
@@ -1016,7 +1035,7 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: Typography.sizes.xl,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     marginTop: Spacing.lg,
     marginBottom: Spacing.sm,
   } as TextStyle,
@@ -1047,7 +1066,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
-    backgroundColor: Colors.background.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     borderWidth: 1.5,
     borderColor: Colors.primary[100],
     minHeight: 38,
@@ -1082,14 +1103,14 @@ const styles = StyleSheet.create({
   // Toggle Vue
   viewToggleContainer: {
     flexDirection: 'row',
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: BorderRadius.full,
     padding: 4,
     alignSelf: 'flex-end',
     marginBottom: Spacing.md,
     marginRight: -Spacing.lg,
-    borderWidth: 1.5,
-    borderColor: Colors.primary[200],
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -1128,12 +1149,12 @@ const styles = StyleSheet.create({
   // Cards de grille
   gridCard: {
     width: '48%',
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: BorderRadius.xl,
     marginBottom: Spacing.md,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: Colors.primary[100],
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
@@ -1149,7 +1170,7 @@ const styles = StyleSheet.create({
   gridCardImage: {
     width: '100%',
     height: 120,
-    backgroundColor: Colors.primary[50],
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -1198,7 +1219,7 @@ const styles = StyleSheet.create({
   gridCardName: {
     fontSize: 15,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     marginBottom: 4,
   } as TextStyle,
   gridCardMeta: {
@@ -1210,7 +1231,7 @@ const styles = StyleSheet.create({
   gridCardRating: {
     fontSize: 13,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: Colors.text.light,
   } as TextStyle,
   gridCardDistance: {
     fontSize: 12,
@@ -1230,7 +1251,9 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     borderRadius: BorderRadius.xl,
     overflow: 'hidden',
-    backgroundColor: Colors.background.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     ...Shadows.md,
   } as ViewStyle,
   map: {
@@ -1270,7 +1293,9 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   } as ViewStyle,
   mapControlButton: {
-    backgroundColor: Colors.background.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -1283,14 +1308,16 @@ const styles = StyleSheet.create({
     bottom: Spacing.md,
     left: Spacing.md,
     right: Spacing.md,
-    backgroundColor: Colors.background.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     padding: Spacing.md,
     borderRadius: BorderRadius.lg,
     ...Shadows.md,
   } as ViewStyle,
   mapInfoText: {
     fontSize: Typography.sizes.sm,
-    color: Colors.text.primary,
+    color: Colors.text.light,
     fontWeight: '600',
     textAlign: 'center',
   } as TextStyle,
@@ -1333,7 +1360,7 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   modalContainer: {
     flex: 1,
-    backgroundColor: Colors.background.light,
+    backgroundColor: Colors.background.dark,
   } as ViewStyle,
   modalHeader: {
     flexDirection: 'row',
@@ -1341,7 +1368,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.primary[200],
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   } as ViewStyle,
   closeButton: {
     padding: Spacing.sm,
@@ -1349,7 +1377,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: Typography.sizes.lg,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     marginLeft: Spacing.md,
   } as TextStyle,
   modalContent: {
@@ -1364,11 +1392,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.md,
-    backgroundColor: Colors.primary[50],
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     marginBottom: Spacing.sm,
   } as ViewStyle,
   modalLoadingText: {
-    color: Colors.primary[600],
+    color: Colors.text.light,
     fontSize: Typography.sizes.sm,
     fontWeight: '600',
   } as TextStyle,
@@ -1392,16 +1420,18 @@ const styles = StyleSheet.create({
   modalImageContainer: {
     width: 80,
     height: 80,
-    backgroundColor: Colors.primary[100],
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: BorderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',
     marginBottom: Spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   } as ViewStyle,
   modalImageText: {
     fontSize: 32,
-    color: Colors.text.primary,
+    color: Colors.text.light,
   } as TextStyle,
   modalInfo: {
     marginBottom: Spacing.xl,
@@ -1409,7 +1439,7 @@ const styles = StyleSheet.create({
   modalName: {
     fontSize: Typography.sizes['2xl'],
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     textAlign: 'center',
     marginBottom: Spacing.sm,
   } as TextStyle,
@@ -1423,7 +1453,7 @@ const styles = StyleSheet.create({
   modalRatingText: {
     fontSize: Typography.sizes.lg,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: Colors.text.light,
   } as TextStyle,
   modalDescription: {
     fontSize: Typography.sizes.base,
@@ -1501,7 +1531,7 @@ const styles = StyleSheet.create({
   modalPromotionText: {
     flex: 1,
     fontSize: Typography.sizes.sm,
-    color: Colors.text.primary,
+    color: Colors.text.light,
     fontWeight: '500',
   } as TextStyle,
   modalActionButton: {

@@ -790,7 +790,8 @@ const styles = StyleSheet.create<SignupStyles>({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.lg,
   },
   scrollView: {
     flex: 1,
@@ -810,13 +811,13 @@ const styles = StyleSheet.create<SignupStyles>({
     fontWeight: 'bold',
     color: 'black',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
   },
   subtitle: {
     fontSize: 16,
     color: '#6B7280',
     textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: Spacing.lg,
   },
   stepProgress: {
     marginBottom: Spacing.lg,
@@ -833,7 +834,7 @@ const styles = StyleSheet.create<SignupStyles>({
     backgroundColor: '#E5E7EB',
   },
   progressSegmentActive: {
-    backgroundColor: Colors.primary[600],
+    backgroundColor: Colors.accent.rose,
   },
   stepLabelsRow: {
     flexDirection: 'row',
@@ -841,11 +842,11 @@ const styles = StyleSheet.create<SignupStyles>({
   },
   stepLabel: {
     fontSize: Typography.sizes.sm,
-    color: Colors.text.secondary,
+    color: Colors.text.muted,
   },
   stepLabelActive: {
-    color: Colors.primary[600],
-    fontWeight: '600',
+    color: Colors.accent.rose,
+    fontWeight: Typography.weights.semibold as any,
   },
   sectionTitle: {
     fontSize: 18,
@@ -872,7 +873,7 @@ const styles = StyleSheet.create<SignupStyles>({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: Spacing.md,
   },
   inputIcon: {
     marginRight: 8,
@@ -900,9 +901,9 @@ const styles = StyleSheet.create<SignupStyles>({
     fontSize: 14,
   },
   switchAuthLink: {
-    color: '#8B5CF6',
-    fontSize: 14,
-    fontWeight: '500',
+    color: Colors.accent.rose,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semibold as any,
   },
   errorBanner: {
     flexDirection: 'row',
@@ -1004,23 +1005,24 @@ const styles = StyleSheet.create<SignupStyles>({
     gap: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: 'white',
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   roleButtonActive: {
-    backgroundColor: '#8B5CF6',
-    borderColor: '#8B5CF6',
+    backgroundColor: Colors.accent.rose,
+    borderColor: Colors.accent.rose,
+    ...Shadows.md,
   },
   roleButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6B7280',
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.medium as any,
+    color: Colors.text.secondary,
   },
   roleButtonTextActive: {
-    color: 'white',
-    fontWeight: '600',
+    color: Colors.text.light,
+    fontWeight: Typography.weights.semibold as any,
   },
 });
 

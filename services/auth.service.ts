@@ -199,16 +199,30 @@ const apiCall = async <T>(
 
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      let errorCode = response.status.toString();
       try {
         const errorText = await response.text();
         console.log('❌ Corps de l\'erreur API (texte brut):', errorText);
         if (errorText) {
-          const errorData = JSON.parse(errorText);
-          console.log('❌ Détails de l\'erreur API (JSON):', JSON.stringify(errorData, null, 2));
-          errorMessage = errorData.message || errorData.error || errorMessage;
+          try {
+            const errorData = JSON.parse(errorText);
+            console.log('❌ Détails de l\'erreur API (JSON):', JSON.stringify(errorData, null, 2));
+            // Extraire le message d'erreur (peut être dans message, error, ou details)
+            errorMessage = errorData.message || errorData.error || errorData.details || errorMessage;
+            // Extraire le code d'erreur si disponible
+            if (errorData.code) {
+              errorCode = errorData.code;
+            }
+            // Préfixer avec le code HTTP pour faciliter le traitement
+            errorMessage = `HTTP ${response.status} (${errorCode}): ${errorMessage}`;
+          } catch (jsonParseError) {
+            // Si ce n'est pas du JSON, utiliser le texte brut
+            errorMessage = `HTTP ${response.status}: ${errorText || response.statusText}`;
+          }
         }
       } catch (parseError) {
         console.log('❌ Impossible de parser l\'erreur JSON:', parseError);
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
       throw new Error(errorMessage);
     }
@@ -581,7 +595,43 @@ export const AuthService = {
       console.log('📧 Email vérifié, procédure de reset démarrée');
     } catch (error) {
       console.log('❌ Erreur lors de la vérification de l\'email:', error);
-      throw new Error('Adresse email inconnue');
+      
+      // Analyser le type d'erreur pour donner un message approprié
+      if (error instanceof Error) {
+        const errorMessage = error.message.toLowerCase();
+        
+        // Erreur 500 : problème serveur (priorité haute)
+        if (errorMessage.includes('http 500') || errorMessage.includes('500') || 
+            errorMessage.includes('server error') || errorMessage.includes('server_error') ||
+            errorMessage.includes('unexpected error') || errorMessage.includes('unexpected error occurred')) {
+          throw new Error('Erreur serveur. Veuillez réessayer plus tard.');
+        }
+        
+        // Erreur 404 ou 400 : email non trouvé
+        if (errorMessage.includes('http 404') || errorMessage.includes('404') || 
+            errorMessage.includes('http 400') || errorMessage.includes('400') ||
+            errorMessage.includes('not found') || errorMessage.includes('bad request')) {
+          throw new Error('Adresse email inconnue');
+        }
+        
+        // Erreur de timeout
+        if (errorMessage.includes('timeout') || errorMessage.includes('TIMEOUT_ERROR')) {
+          throw new Error('Le serveur met trop de temps à répondre. Veuillez réessayer.');
+        }
+        
+        // Autres erreurs liées à l'email : email non trouvé
+        if (errorMessage.includes('email') && (errorMessage.includes('inconnu') || 
+            errorMessage.includes('unknown') || errorMessage.includes('not found') ||
+            errorMessage.includes('n\'existe pas') || errorMessage.includes('does not exist'))) {
+          throw new Error('Adresse email inconnue');
+        }
+        
+        // Pour les autres erreurs, propager le message original
+        throw error;
+      }
+      
+      // Si ce n'est pas une Error, créer une erreur générique
+      throw new Error('Erreur lors de la vérification de l\'email');
     }
   },
 
@@ -873,6 +923,7 @@ export const AuthService = {
       }
 
       console.log('✅ [Auth Service] Informations utilisateur récupérées', {
+        id: userData.id,
         email: userData.email,
         firstName: userData.firstName,
         lastName: userData.lastName,
@@ -1022,15 +1073,39 @@ export const AuthService = {
         throw new Error('Google Client ID non configuré. Veuillez définir EXPO_PUBLIC_GOOGLE_CLIENT_ID');
       }
 
+      // Générer le redirect URI - Utiliser le proxy Expo qui génère un URI stable
+      // Le proxy Expo est recommandé par Google pour les applications en développement
+      // Utiliser useProxy: true génère automatiquement un URI qui fonctionne pour tous les utilisateurs
+      const redirectUri = AuthSession.makeRedirectUri({
+        useProxy: true, // Utiliser le proxy Expo (URI stable et conforme, accessible à tous)
+      });
+
+      console.log('🔗 [Auth Service] Redirect URI généré:', redirectUri);
+      console.log('⚠️ [Auth Service] CONFIGURATION REQUISE dans Google Cloud Console:');
+      console.log('   1. Allez sur https://console.cloud.google.com/apis/credentials');
+      console.log('   2. Sélectionnez votre OAuth 2.0 Client ID (type: Web application)');
+      console.log('   3. Dans "Authorized redirect URIs" (pas JavaScript Origins), ajoutez:');
+      console.log('      - Le redirect URI ci-dessus:', redirectUri);
+      console.log('      - Pour Expo Go: exp://127.0.0.1:8081');
+      console.log('      - Pour le proxy Expo (tous utilisateurs): https://auth.expo.io');
+      console.log('   4. Dans "Authorized JavaScript origins", ajoutez UNIQUEMENT:');
+      console.log('      - http://localhost:8083 (pour le développement local)');
+      console.log('      - https://auth.expo.io (sans chemin ni /)');
+      console.log('   5. IMPORTANT: Ne mettez PAS exp:// dans JavaScript Origins');
+      console.log('   6. Sauvegardez les modifications');
+
       // Créer la requête d'authentification
+      // Utiliser Code flow avec PKCE pour être conforme aux politiques Google OAuth 2.0
       const request = new AuthSession.AuthRequest({
         clientId: clientId,
         scopes: ['openid', 'profile', 'email'],
-        responseType: AuthSession.ResponseType.IdToken,
-        redirectUri: AuthSession.makeRedirectUri({
-          scheme: 'maya',
-          path: 'auth',
-        }),
+        responseType: AuthSession.ResponseType.Code, // Utiliser Code au lieu de IdToken pour plus de sécurité
+        redirectUri: redirectUri,
+        usePKCE: true, // Activer PKCE pour être conforme aux politiques Google
+        extraParams: {
+          access_type: 'offline', // Pour obtenir un refresh token
+          prompt: 'consent', // Forcer le consentement pour obtenir le refresh token
+        },
       });
 
       console.log('🌐 [Auth Service] Requête d\'authentification Google créée');
@@ -1049,14 +1124,62 @@ export const AuthService = {
       });
 
       if (result.type === 'success' && 'params' in result) {
-        const { id_token } = (result.params as { id_token?: string });
+        const params = result.params as { code?: string; id_token?: string };
         
-        if (!id_token) {
-          console.error('❌ [Auth Service] Aucun id_token reçu de Google');
+        // Si on utilise le flow Code, échanger le code contre un token
+        let idToken: string | undefined;
+        
+        if (params.code) {
+          console.log('✅ [Auth Service] Code d\'autorisation reçu, échange contre un token...');
+          
+          // Échanger le code contre un id_token
+          // Récupérer le code_verifier depuis la requête (PKCE)
+          const codeVerifier = request.codeVerifier;
+          
+          if (!codeVerifier) {
+            console.error('❌ [Auth Service] Code verifier manquant pour PKCE');
+            throw new Error('Erreur de configuration PKCE');
+          }
+
+          const tokenResponse = await fetch(discovery.tokenEndpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+              code: params.code,
+              client_id: clientId,
+              redirect_uri: redirectUri,
+              grant_type: 'authorization_code',
+              code_verifier: codeVerifier, // PKCE
+            }).toString(),
+          });
+
+          if (!tokenResponse.ok) {
+            const errorText = await tokenResponse.text();
+            console.error('❌ [Auth Service] Erreur lors de l\'échange du code:', errorText);
+            throw new Error('Impossible d\'échanger le code contre un token');
+          }
+
+          const tokenData = await tokenResponse.json();
+          idToken = tokenData.id_token;
+          
+          if (!idToken) {
+            console.error('❌ [Auth Service] Aucun id_token dans la réponse d\'échange');
+            throw new Error('Aucun token Google reçu après l\'échange');
+          }
+          
+          console.log('✅ [Auth Service] ID Token obtenu après échange:', idToken.substring(0, 30) + '...');
+        } else if (params.id_token) {
+          // Fallback si on reçoit directement l'id_token (ancien flow)
+          idToken = params.id_token;
+          console.log('✅ [Auth Service] ID Token reçu directement:', idToken.substring(0, 30) + '...');
+        } else {
+          console.error('❌ [Auth Service] Aucun code ni id_token reçu de Google');
+          console.error('❌ [Auth Service] Paramètres reçus:', Object.keys(params));
           throw new Error('Aucun token Google reçu');
         }
 
-        console.log('✅ [Auth Service] ID Token Google reçu:', id_token.substring(0, 30) + '...');
         console.log('🌐 [Auth Service] Appel API: POST /api/v1/auth/google');
         console.log('🌐 [Auth Service] Base URL:', API_BASE_URL);
 
@@ -1065,7 +1188,7 @@ export const AuthService = {
         const response = await apiCall<any>('/auth/google', {
           method: 'POST',
           body: JSON.stringify({
-            idToken: id_token,
+            idToken: idToken,
           }),
         });
         const duration = Date.now() - startTime;
@@ -1131,11 +1254,33 @@ export const AuthService = {
         console.log('👤 [Auth Service] Utilisateur Google sauvegardé:', publicUser.email);
 
         return publicUser;
-      } else if (result.type === 'error' && 'errorCode' in result) {
+      } else if (result.type === 'error') {
+        const errorDetails = 'errorCode' in result ? result.errorCode : 
+                            'error' in result ? result.error : 
+                            'message' in result ? result.message : 
+                            'Erreur inconnue';
+        
         console.error('❌ [Auth Service] Erreur lors de l\'authentification Google:', {
-          error: result.errorCode,
+          error: errorDetails,
+          resultType: result.type,
+          fullResult: JSON.stringify(result, null, 2),
         });
-        throw new Error(result.errorCode || 'Erreur lors de la connexion Google');
+
+        // Messages d'erreur plus explicites
+        let errorMessage = 'Erreur lors de la connexion Google';
+        if (typeof errorDetails === 'string') {
+          if (errorDetails.includes('access_denied') || errorDetails.includes('blocked')) {
+            errorMessage = 'Accès bloqué. Vérifiez que l\'application est autorisée dans votre compte Google.';
+          } else if (errorDetails.includes('redirect_uri_mismatch')) {
+            errorMessage = 'Erreur de configuration. Le redirect URI n\'est pas autorisé.';
+          } else if (errorDetails.includes('invalid_client')) {
+            errorMessage = 'Client ID Google invalide. Vérifiez la configuration.';
+          } else {
+            errorMessage = `Erreur Google: ${errorDetails}`;
+          }
+        }
+        
+        throw new Error(errorMessage);
       } else {
         console.log('❌ [Auth Service] Authentification Google annulée par l\'utilisateur');
         throw new Error('Connexion Google annulée');

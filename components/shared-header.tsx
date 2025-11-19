@@ -39,7 +39,7 @@ export function SharedHeader({
 }: SharedHeaderProps) {
   return (
     <LinearGradient
-      colors={gradientColors ?? (['#8B5CF6', '#A855F7', '#EC4899'] as const)}
+      colors={gradientColors ?? (['#6B1F2F', '#7B2F3F', '#8B2F3F'] as const)}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.headerGradient}
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
   } as ViewStyle,
   scanChipText: {
-    color: '#8B5CF6',
+    color: '#8B2F3F',
     fontSize: Typography.sizes.sm,
     fontWeight: '600',
   } as TextStyle,

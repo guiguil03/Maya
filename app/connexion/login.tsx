@@ -81,7 +81,6 @@ export default function LoginScreen() {
             </TouchableOpacity>
             <View style={styles.logoContainer}>
               <Text style={styles.appName}>Maya</Text>
-              <View style={styles.logoUnderline} />
             </View>
             <View style={styles.placeholder} />
           </View>
@@ -89,7 +88,7 @@ export default function LoginScreen() {
           <View style={styles.content}>
             <View style={styles.card}>
               <Text style={styles.title}>Connexion</Text>
-              <Text style={styles.subtitle}>Connectez-vous pour accéder à vos économies</Text>
+              <Text style={styles.subtitle}>Accédez à votre espace d&apos;économies en un instant</Text>
 
               {/* Message d'erreur global */}
               {errorMessage ? (
@@ -113,8 +112,12 @@ export default function LoginScreen() {
                     if (error instanceof Error) {
                       if (error.message.includes('annulée')) {
                         setErrorMessage('Connexion Google annulée');
+                      } else if (error.message.includes('Accès bloqué')) {
+                        setErrorMessage('❌ Accès bloqué. Vérifiez que l\'application est autorisée dans votre compte Google ou contactez le support.');
+                      } else if (error.message.includes('redirect_uri')) {
+                        setErrorMessage('❌ Erreur de configuration. Veuillez contacter le support technique.');
                       } else {
-                        setErrorMessage(`❌ Erreur Google: ${error.message}`);
+                        setErrorMessage(`❌ ${error.message}`);
                       }
                     } else {
                       setErrorMessage('❌ Échec de la connexion Google. Veuillez réessayer.');
@@ -247,11 +250,12 @@ export default function LoginScreen() {
               <View style={styles.signupContainer}>
                 <Text style={styles.signupText}>Pas encore de compte ? </Text>
                 <TouchableOpacity onPress={() => router.push('/connexion/signup')}>
-                  <Text style={styles.signupLink}>S’inscrire</Text>
+                  <Text style={styles.signupLink}>S&apos;inscrire</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
+        
         </SafeAreaView>
       </LinearGradient>
     </NavigationTransition>
@@ -313,6 +317,7 @@ const styles = StyleSheet.create<LoginStyles>({
   },
   safeArea: {
     flex: 1,
+    paddingHorizontal: 0,
   },
   header: {
     flexDirection: 'row',
@@ -364,13 +369,12 @@ const styles = StyleSheet.create<LoginStyles>({
   content: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: Spacing.lg,
   },
   card: {
     backgroundColor: Colors.background.card,
     borderRadius: BorderRadius['3xl'],
-    paddingHorizontal: Spacing['2xl'],
-    paddingVertical: Spacing.lg,
+    padding: Spacing['2xl'],
     marginVertical: Spacing.lg,
     ...Shadows.xl,
   },
@@ -379,18 +383,18 @@ const styles = StyleSheet.create<LoginStyles>({
     fontWeight: 'bold',
     color: 'black',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
   },
   subtitle: {
     fontSize: 16,
     color: '#6B7280',
     textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: Spacing.lg,
   },
   socialButtons: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 20,
+    marginBottom: Spacing.md,
   },
   socialButton: {
     flex: 1,
@@ -402,17 +406,17 @@ const styles = StyleSheet.create<LoginStyles>({
     height: 44,
     paddingHorizontal: 14,
     borderRadius: 22,
-    backgroundColor: Colors.background.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   socialButtonText: {
-    color: '#6B7280',
-    fontSize: 14,
-    fontWeight: '500',
+    color: Colors.text.secondary,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.medium as any,
   },
   googleButton: {
-    backgroundColor: 'white',
+    backgroundColor: '#FFFFFF',
     borderRadius: BorderRadius.lg,
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
@@ -431,14 +435,15 @@ const styles = StyleSheet.create<LoginStyles>({
     gap: Spacing.sm,
   } as ViewStyle,
   googleButtonText: {
-    color: '#1F2937',
+    color: Colors.text.dark,
     fontSize: Typography.sizes.base,
-    fontWeight: '600',
+    fontWeight: Typography.weights.semibold as any,
+    letterSpacing: 0.2,
   } as TextStyle,
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 20,
+    
   },
   dividerLine: {
     flex: 1,
@@ -446,18 +451,18 @@ const styles = StyleSheet.create<LoginStyles>({
     backgroundColor: '#E5E7EB',
   },
   dividerText: {
-    marginHorizontal: 16,
+    marginHorizontal: Spacing.md,
     color: '#9CA3AF',
-    fontSize: 14,
+    fontSize: Typography.sizes.sm,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: Spacing.md,
   },
   inputLabel: {
     fontSize: 16,
     fontWeight: '500',
     color: 'black',
-    marginBottom: 8,
+    marginBottom: Spacing.xs,
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -465,73 +470,75 @@ const styles = StyleSheet.create<LoginStyles>({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: Spacing.md,
   },
   inputIcon: {
     marginRight: 8,
   },
   input: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: Spacing.md,
     fontSize: 16,
     color: 'black',
   },
   loginButton: {
-    marginTop: 10,
-    marginBottom: 20,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.md,
   },
   skipLoginButton: {
     marginBottom: 20,
   },
   forgotPassword: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: Spacing.sm,
   },
   forgotPasswordText: {
-    color: '#8B5CF6',
-    fontSize: 14,
+    color: '#6B7280',
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.medium as any,
   },
   signupContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: Spacing.md,
   },
   signupText: {
     color: '#6B7280',
-    fontSize: 14,
+    fontSize: Typography.sizes.sm,
   },
   signupLink: {
-    color: '#8B5CF6',
-    fontSize: 14,
-    fontWeight: '500',
+    color: '#EF4444',
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semibold as any,
   },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FEE2E2',
     borderLeftWidth: 4,
-    borderLeftColor: '#DC2626',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 20,
-    gap: 10,
+    borderLeftColor: '#EF4444',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.lg,
+    gap: Spacing.sm,
   },
   errorBannerText: {
     flex: 1,
     color: '#991B1B',
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.medium as any,
   },
   inputError: {
-    borderColor: '#DC2626',
+    borderColor: '#EF4444',
     borderWidth: 2,
     backgroundColor: '#FEF2F2',
   },
   fieldError: {
-    color: '#DC2626',
-    fontSize: 12,
-    marginTop: 4,
-    marginLeft: 4,
+    color: '#EF4444',
+    fontSize: Typography.sizes.xs,
+    marginTop: Spacing.xs,
+    marginLeft: Spacing.xs,
   },
   roleSelector: {
     flexDirection: 'row',
@@ -552,8 +559,8 @@ const styles = StyleSheet.create<LoginStyles>({
     backgroundColor: 'white',
   },
   roleButtonActive: {
-    backgroundColor: '#8B5CF6',
-    borderColor: '#8B5CF6',
+    backgroundColor: '#8B2F3F',
+    borderColor: '#8B2F3F',
   },
   roleButtonText: {
     fontSize: 14,

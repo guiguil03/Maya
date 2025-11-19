@@ -1,4 +1,12 @@
 import { NavigationTransition } from '@/components/common/navigation-transition';
+import { PartnerBottomNav, PartnerTab } from '@/components/partners/partner-bottom-nav';
+import { PartnerHeader } from '@/components/partners/partner-header';
+import { PartnerHistory } from '@/components/partners/partner-history';
+import { PartnerOverview } from '@/components/partners/partner-overview';
+import { PartnerStats } from '@/components/partners/partner-stats';
+import { PartnerStoreModal } from '@/components/partners/partner-store-modal';
+import { PartnerStores } from '@/components/partners/partner-stores';
+import { PartnerSubscription } from '@/components/partners/partner-subscription';
 import { QRScanner } from '@/components/qr/qr-scanner';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
 import { useAuth } from '@/hooks/use-auth';
@@ -6,21 +14,15 @@ import { AuthService } from '@/services/auth.service';
 import { ClientService } from '@/services/client.service';
 import { QrService } from '@/services/qr.service';
 import { StoresService } from '@/services/stores.service';
-import { Ionicons } from '@expo/vector-icons';
+import { TransactionsService } from '@/services/transactions.service';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
-  Modal,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   TextStyle,
-  TouchableOpacity,
-  View,
   ViewStyle
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -40,7 +42,7 @@ const mockSubscriptions = [
 
 export default function PartnerHomeScreen() {
   const { user, signOut } = useAuth();
-  const [selectedTab, setSelectedTab] = useState<'overview' | 'history' | 'subscription' | 'stats' | 'stores'>('overview');
+  const [selectedTab, setSelectedTab] = useState<PartnerTab>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPeriod, setFilterPeriod] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [showQRScanner, setShowQRScanner] = useState(false);
@@ -51,6 +53,12 @@ export default function PartnerHomeScreen() {
   const [clientsLoading, setClientsLoading] = useState(false);
   const [clientsError, setClientsError] = useState<string | null>(null);
 
+  // États pour les transactions du partenaire
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [transactionsError, setTransactionsError] = useState<string | null>(null);
+  const [selectedStoreId, setSelectedStoreId] = useState<string | undefined>(undefined);
+
   // États pour les stores
   const [stores, setStores] = useState<any[]>([]);
   const [storesLoading, setStoresLoading] = useState(false);
@@ -60,17 +68,10 @@ export default function PartnerHomeScreen() {
   const [storeDetailLoading, setStoreDetailLoading] = useState(false);
   const [storeSearchQuery, setStoreSearchQuery] = useState('');
 
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      router.replace('/connexion/login');
-    } catch (error) {
-      console.error('Erreur lors de la déconnexion:', error);
-    }
-  };
-
   const handleScanQR = () => {
+    console.log('📱 [Partner Home] Bouton Scanner QR cliqué');
     setShowQRScanner(true);
+    console.log('📱 [Partner Home] showQRScanner mis à true');
   };
 
   const handleQRScanned = async (qrData: string) => {
@@ -359,6 +360,90 @@ export default function PartnerHomeScreen() {
     loadClients();
   }, [loadClients]);
 
+  // Charger les transactions du partenaire
+  const loadPartnerTransactions = useCallback(async () => {
+    if (!user?.id) {
+      setTransactionsError('Utilisateur non connecté');
+      setTransactionsLoading(false);
+      return;
+    }
+
+    try {
+      setTransactionsLoading(true);
+      setTransactionsError(null);
+
+      // Récupérer l'ID du partenaire depuis l'API si nécessaire
+      let partnerId = user.id;
+      try {
+        const userInfo = await AuthService.getCurrentUserInfo();
+        partnerId = userInfo.id || (userInfo as any)?.partnerId || user.id;
+      } catch (apiError) {
+        console.error('❌ [Partner History] Impossible de récupérer l\'ID depuis l\'API:', apiError);
+      }
+
+      // Calculer les dates selon la période sélectionnée
+      let startDate: string | undefined;
+      const now = new Date();
+      
+      if (filterPeriod === 'today') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      } else if (filterPeriod === 'week') {
+        const weekAgo = new Date(now);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        startDate = weekAgo.toISOString();
+      } else if (filterPeriod === 'month') {
+        const monthAgo = new Date(now);
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        startDate = monthAgo.toISOString();
+      }
+
+      console.log('📊 [Partner History] Chargement des transactions pour le partenaire:', {
+        partnerId,
+        filterPeriod,
+        startDate,
+        selectedStoreId,
+      });
+
+      const response = await TransactionsService.getPartnerTransactions(partnerId, {
+        page: 1,
+        pageSize: 100,
+        storeId: selectedStoreId,
+        startDate: startDate,
+      });
+
+      console.log('✅ [Partner History] Transactions reçues:', {
+        count: response.items?.length || 0,
+        totalCount: response.totalCount,
+      });
+
+      setTransactions(response.items || []);
+    } catch (err) {
+      console.error('Erreur lors du chargement des transactions:', err);
+      let errorMessage = 'Erreur lors du chargement';
+      
+      if (err instanceof Error) {
+        if (err.message.includes('401')) {
+          errorMessage = 'Session expirée. Veuillez vous reconnecter.';
+        } else if (err.message.includes('403')) {
+          errorMessage = 'Accès refusé.';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
+      setTransactionsError(errorMessage);
+      setTransactions([]);
+    } finally {
+      setTransactionsLoading(false);
+    }
+  }, [user, filterPeriod, selectedStoreId]);
+
+  useEffect(() => {
+    if (selectedTab === 'history') {
+      loadPartnerTransactions();
+    }
+  }, [selectedTab, loadPartnerTransactions]);
+
   // Charger les stores du partenaire connecté uniquement
   const loadStores = useCallback(async () => {
     console.log('🏪 [Partner Home] Chargement des stores du partenaire...');
@@ -367,72 +452,130 @@ export default function PartnerHomeScreen() {
     try {
       // Récupérer les informations du partenaire connecté
       let partnerId: string | undefined;
-      try {
-        const userInfo = await AuthService.getCurrentUserInfo();
-        console.log('👤 [Partner Home] Informations utilisateur:', {
-          email: userInfo.email,
-          hasPartnerId: !!(userInfo as any)?.partnerId,
-          hasId: !!userInfo.id,
-        });
-        
-        // L'ID du partenaire peut être dans userInfo.partnerId ou userInfo.id
-        partnerId = (userInfo as any)?.partnerId || (userInfo as any)?.id;
-        
-        if (!partnerId) {
-          console.warn('⚠️ [Partner Home] Aucun partnerId trouvé, récupération de tous les stores');
-        } else {
-          console.log('✅ [Partner Home] PartnerId trouvé:', partnerId);
+      
+      // Essayer d'abord avec user.id
+      if (user?.id) {
+        partnerId = user.id;
+        console.log('✅ [Partner Home] PartnerId depuis user.id:', partnerId);
+      }
+      
+      // Si pas trouvé, essayer avec getCurrentUserInfo
+      if (!partnerId) {
+        try {
+          const userInfo = await AuthService.getCurrentUserInfo();
+          console.log('👤 [Partner Home] Informations utilisateur:', {
+            email: userInfo.email,
+            id: userInfo.id,
+            hasPartnerId: !!(userInfo as any)?.partnerId,
+            allKeys: Object.keys(userInfo),
+          });
+          
+          // L'ID du partenaire peut être dans userInfo.partnerId ou userInfo.id
+          partnerId = (userInfo as any)?.partnerId || userInfo.id;
+          
+          if (partnerId) {
+            console.log('✅ [Partner Home] PartnerId trouvé depuis getCurrentUserInfo:', partnerId);
+          }
+        } catch (error) {
+          console.warn('⚠️ [Partner Home] Impossible de récupérer les infos utilisateur:', error);
         }
-      } catch (error) {
-        console.warn('⚠️ [Partner Home] Impossible de récupérer les infos utilisateur:', error);
+      }
+      
+      if (!partnerId) {
+        console.error('❌ [Partner Home] Aucun partnerId trouvé');
+        setStoresError('Impossible d\'identifier le partenaire');
+        setStores([]);
+        return;
       }
 
+      console.log('🔍 [Partner Home] Recherche des stores pour le partenaire:', partnerId);
+
       // Récupérer tous les stores (l'API devrait filtrer automatiquement par partenaire si authentifié)
-      // Sinon, on filtre côté client
       const response = await StoresService.searchStores({
         page: 1,
         pageSize: 100,
       });
       
-      console.log('✅ [Partner Home] Stores récupérés (avant filtre):', response.items?.length || 0);
+      console.log('✅ [Partner Home] Stores récupérés (avant filtre):', {
+        total: response.items?.length || 0,
+        firstStore: response.items?.[0] ? {
+          id: response.items[0].id,
+          name: response.items[0].name,
+          partnerId: response.items[0].partnerId || response.items[0].partner?.id,
+        } : null,
+      });
       
       // Filtrer les stores pour ne garder que ceux du partenaire connecté
-      let filteredStores = response.items || [];
+      let filteredStores = (response.items || []).filter((store: any) => {
+        // Essayer plusieurs chemins pour trouver le partnerId du store
+        const storePartnerId = store.partnerId 
+          || store.partner?.id 
+          || (store.partner && typeof store.partner === 'string' ? store.partner : null)
+          || (store.partnerData?.id)
+          || null;
+        
+        // Comparer les IDs (en tenant compte des formats string/UUID)
+        const matches = storePartnerId 
+          && (storePartnerId === partnerId 
+              || storePartnerId.toString() === partnerId.toString()
+              || storePartnerId.toString().toLowerCase() === partnerId.toString().toLowerCase());
+        
+        if (!matches && storePartnerId) {
+          console.log('🚫 [Partner Home] Store filtré (ne correspond pas au partenaire):', {
+            storeId: store.id,
+            storeName: store.name || store.partner?.name,
+            storePartnerId: storePartnerId.toString().substring(0, 20) + '...',
+            currentPartnerId: partnerId.toString().substring(0, 20) + '...',
+          });
+        }
+        
+        return matches;
+      });
       
-      if (partnerId) {
-        filteredStores = filteredStores.filter((store: any) => {
-          const storePartnerId = store.partnerId || store.partner?.id || store.partnerId;
-          const matches = storePartnerId === partnerId || storePartnerId?.toString() === partnerId?.toString();
-          if (!matches) {
-            console.log('🚫 [Partner Home] Store filtré:', {
-              storeId: store.id,
-              storeName: store.name || store.partner?.name,
-              storePartnerId,
-              currentPartnerId: partnerId,
-            });
-          }
-          return matches;
-        });
-        console.log('✅ [Partner Home] Stores filtrés (après filtre):', filteredStores.length);
+      console.log('✅ [Partner Home] Stores filtrés (après filtre):', {
+        count: filteredStores.length,
+        stores: filteredStores.map((s: any) => ({
+          id: s.id,
+          name: s.name || s.partner?.name,
+        })),
+      });
+      
+      if (filteredStores.length === 0) {
+        console.warn('⚠️ [Partner Home] Aucun store trouvé pour ce partenaire');
+        setStoresError('Aucun magasin trouvé pour votre compte');
       } else {
-        console.warn('⚠️ [Partner Home] Aucun partnerId, affichage de tous les stores');
+        setStoresError(null);
       }
       
       setStores(filteredStores);
     } catch (error) {
       console.error('❌ [Partner Home] Erreur lors du chargement des stores:', error);
-      setStoresError('Impossible de charger les stores');
+      if (error instanceof Error) {
+        console.error('❌ [Partner Home] Détails de l\'erreur:', {
+          message: error.message,
+          name: error.name,
+        });
+        setStoresError(`Erreur: ${error.message}`);
+      } else {
+        setStoresError('Impossible de charger les stores');
+      }
       setStores([]);
     } finally {
       setStoresLoading(false);
     }
-  }, []);
+  }, [user]);
 
+  // Charger les stores au démarrage et quand on change d'onglet vers stores
   useEffect(() => {
     if (selectedTab === 'stores') {
       loadStores();
     }
   }, [selectedTab, loadStores]);
+
+  // Charger les stores au démarrage pour les avoir disponibles pour le scanner QR
+  useEffect(() => {
+    loadStores();
+  }, [loadStores]);
 
   // Afficher les détails d'un store
   const handleStoreSelect = async (store: any) => {
@@ -492,803 +635,127 @@ export default function PartnerHomeScreen() {
 
   return (
     <NavigationTransition>
-      <SafeAreaView style={styles.container}>
-        {/* Header */}
-        <LinearGradient
-          colors={['#F59E0B', '#EF4444']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.header}
-        >
-          <View style={styles.headerContent}>
-            <View>
-              <Text style={styles.headerTitle}>
-                {user?.firstName || 'Partenaire'} {user?.lastName || ''}
-              </Text>
-              <Text style={styles.headerSubtitle}>Tableau de bord partenaire</Text>
-            </View>
-            <View style={styles.headerRight}>
-              <TouchableOpacity style={styles.notificationButton}>
-                <Ionicons name="notifications" size={24} color="white" />
-                <View style={styles.notificationBadge} />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.logoutButton}
-                onPress={handleLogout}
-              >
-                <Ionicons name="log-out-outline" size={22} color="white" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </LinearGradient>
+      <LinearGradient
+        colors={Colors.gradients.primary}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.container}
+      >
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
+          <PartnerHeader 
+            firstName={user?.firstName} 
+            lastName={user?.lastName}
+            onLogout={async () => {
+              try {
+                await signOut();
+                router.replace('/connexion/login');
+              } catch (error) {
+                console.error('Erreur lors de la déconnexion:', error);
+                Alert.alert('Erreur', 'Impossible de se déconnecter');
+              }
+            }}
+          />
 
-
-        <ScrollView 
-          style={styles.content} 
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
+          <ScrollView 
+            style={styles.content} 
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+          >
           {selectedTab === 'overview' && (
-            <>
-              {/* Statistiques */}
-              <View style={styles.statsGrid}>
-                <View style={styles.statCard}>
-                  <View style={styles.statIconContainer}>
-                    <Ionicons name="wallet" size={24} color="#10B981" />
-                  </View>
-                  <Text style={styles.statValue}>{totalRevenue.toFixed(2)}€</Text>
-                  <Text style={styles.statLabel}>Revenus totaux</Text>
-                </View>
-                <View style={styles.statCard}>
-                  <View style={[styles.statIconContainer, { backgroundColor: Colors.primary[50] }]}>
-                    <Ionicons name="today" size={24} color={Colors.primary[600]} />
-                  </View>
-                  <Text style={[styles.statValue, { color: Colors.primary[600] }]}>
-                    {todayRevenue.toFixed(2)}€
-                  </Text>
-                  <Text style={styles.statLabel}>Aujourd&apos;hui</Text>
-                </View>
-                <View style={styles.statCard}>
-                  <View style={[styles.statIconContainer, { backgroundColor: '#FEF3C7' }]}>
-                    <Ionicons name="scan" size={24} color="#F59E0B" />
-                  </View>
-                  <Text style={[styles.statValue, { color: '#F59E0B' }]}>{totalScans}</Text>
-                  <Text style={styles.statLabel}>Scans total</Text>
-                </View>
-              </View>
-
-              {/* Scanner QR Code */}
-              <View style={styles.qrCard}>
-                <View style={styles.qrCardHeader}>
-                  <View>
-                    <Text style={styles.qrCardTitle}>Scanner QR Code Client</Text>
-                    <Text style={styles.qrCardSubtitle}>
-                      Scannez le QR Code du client pour valider sa visite
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.scannerContainer}>
-                  {validatingQR ? (
-                    <View style={styles.scannerLoadingContainer}>
-                      <ActivityIndicator size="large" color={Colors.primary[600]} />
-                      <Text style={styles.scannerLoadingText}>Validation en cours...</Text>
-                    </View>
-                  ) : (
-                    <View style={styles.scannerPlaceholder}>
-                      <Ionicons name="scan" size={64} color={Colors.primary[600]} />
-                      <Text style={styles.scannerPlaceholderText}>
-                        Appuyez sur le bouton pour scanner
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                <TouchableOpacity 
-                  style={styles.scanButton}
-                  onPress={handleScanQR}
-                  disabled={validatingQR}
-                >
-                  <Ionicons name="scan" size={24} color="white" />
-                  <Text style={styles.scanButtonText}>Scanner QR Code</Text>
-                </TouchableOpacity>
-              </View>
-              
-              {/* Modal Scanner */}
-              <QRScanner
-                visible={showQRScanner}
-                onScan={handleQRScanned}
-                onClose={() => setShowQRScanner(false)}
-              />
-
-              {/* Actions rapides */}
-              <View style={styles.quickActionsSection}>
-                <Text style={styles.sectionTitle}>Actions rapides</Text>
-                <View style={styles.quickActionsGrid}>
-                  <TouchableOpacity 
-                    style={styles.quickActionCard}
-                    onPress={handleExportData}
-                  >
-                    <View style={styles.quickActionIcon}>
-                      <Ionicons name="document-text" size={24} color="#3B82F6" />
-                    </View>
-                    <Text style={styles.quickActionLabel}>Exporter</Text>
-                    <Text style={styles.quickActionSubtext}>Données</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.quickActionCard}>
-                    <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
-                      <Ionicons name="settings" size={24} color="#F59E0B" />
-                    </View>
-                    <Text style={styles.quickActionLabel}>Paramètres</Text>
-                    <Text style={styles.quickActionSubtext}>Compte</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.quickActionCard}>
-                    <View style={[styles.quickActionIcon, { backgroundColor: '#D1FAE5' }]}>
-                      <Ionicons name="help-circle" size={24} color="#10B981" />
-                    </View>
-                    <Text style={styles.quickActionLabel}>Aide</Text>
-                    <Text style={styles.quickActionSubtext}>Support</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Clients récents */}
-              <View style={styles.recentSection}>
-                <Text style={styles.sectionTitle}>Clients récents</Text>
-                {clientsLoading ? (
-                  <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="small" color={Colors.primary[600]} />
-                    <Text style={styles.loadingText}>Chargement des clients...</Text>
-                  </View>
-                ) : clientsError ? (
-                  <View style={styles.errorContainer}>
-                    <Ionicons name="alert-circle" size={20} color={Colors.status.error} />
-                    <Text style={styles.errorText}>{clientsError}</Text>
-                  </View>
-                ) : filteredClients.length === 0 ? (
-                  <View style={styles.emptyContainer}>
-                    <Ionicons name="people-outline" size={32} color={Colors.text.secondary} />
-                    <Text style={styles.emptyText}>Aucun client trouvé</Text>
-                  </View>
-                ) : (
-                  filteredClients.slice(0, 3).map((client) => (
-                    <View key={client.id || client.email} style={styles.transactionItem}>
-                      <View style={styles.transactionIcon}>
-                        <Ionicons name="person" size={20} color={Colors.primary[600]} />
-                      </View>
-                      <View style={styles.transactionInfo}>
-                        <Text style={styles.transactionName}>
-                          {client.firstName || ''} {client.lastName || ''}
-                        </Text>
-                        <Text style={styles.transactionDate}>{client.email || ''}</Text>
-                      </View>
-                    </View>
-                  ))
-                )}
-              </View>
-            </>
+            <PartnerOverview
+              totalRevenue={totalRevenue}
+              todayRevenue={todayRevenue}
+              totalScans={totalScans}
+              clients={clients}
+              clientsLoading={clientsLoading}
+              clientsError={clientsError}
+              filteredClients={filteredClients}
+              onExportData={handleExportData}
+              onScanQR={handleScanQR}
+              validatingQR={validatingQR}
+            />
           )}
 
           {selectedTab === 'history' && (
-            <View style={styles.historySection}>
-              <View style={styles.historyHeaderSection}>
-                <Text style={styles.sectionTitle}>Historique complet</Text>
-                <TouchableOpacity 
-                  style={styles.exportButton}
-                  onPress={handleExportData}
-                >
-                  <Ionicons name="download-outline" size={18} color={Colors.primary[600]} />
-                  <Text style={styles.exportButtonText}>Exporter</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Barre de recherche */}
-              <View style={styles.searchContainer}>
-                <Ionicons name="search" size={20} color={Colors.text.secondary} style={styles.searchIcon} />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Rechercher un client..."
-                  placeholderTextColor={Colors.text.secondary}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <Ionicons name="close-circle" size={20} color={Colors.text.secondary} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Filtres par période */}
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                style={styles.filtersContainer}
-                contentContainerStyle={styles.filtersContent}
-              >
-                {[
-                  { key: 'all', label: 'Tout' },
-                  { key: 'today', label: "Aujourd'hui" },
-                  { key: 'week', label: '7 jours' },
-                  { key: 'month', label: '30 jours' },
-                ].map((filter) => (
-                  <TouchableOpacity
-                    key={filter.key}
-                    style={[
-                      styles.filterChip,
-                      filterPeriod === filter.key && styles.filterChipActive,
-                    ]}
-                    onPress={() => setFilterPeriod(filter.key as any)}
-                  >
-                    <Text
-                      style={[
-                        styles.filterChipText,
-                        filterPeriod === filter.key && styles.filterChipTextActive,
-                      ]}
-                    >
-                      {filter.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              {/* Résultats filtrés */}
-              {clientsLoading ? (
-                <View style={styles.emptyState}>
-                  <ActivityIndicator size="large" color={Colors.primary[600]} />
-                  <Text style={styles.emptyStateText}>Chargement des clients...</Text>
-                </View>
-              ) : clientsError ? (
-                <View style={styles.emptyState}>
-                  <Ionicons name="alert-circle" size={64} color={Colors.status.error} />
-                  <Text style={styles.emptyStateTitle}>Erreur</Text>
-                  <Text style={styles.emptyStateText}>{clientsError}</Text>
-                </View>
-              ) : filteredClients.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Ionicons name="search-outline" size={64} color={Colors.text.secondary} />
-                  <Text style={styles.emptyStateTitle}>Aucun résultat</Text>
-                  <Text style={styles.emptyStateText}>
-                    Aucun client ne correspond à vos critères
-                  </Text>
-                </View>
-              ) : (
-                <>
-                  <View style={styles.resultsCount}>
-                    <Text style={styles.resultsCountText}>
-                      {filteredClients.length} client{filteredClients.length > 1 ? 's' : ''}
-                    </Text>
-                  </View>
-                  {filteredClients.map((client) => (
-                    <View key={client.id || client.email} style={styles.historyCard}>
-                      <View style={styles.historyHeader}>
-                        <View style={styles.historyIcon}>
-                          <Ionicons name="person" size={24} color={Colors.primary[600]} />
-                        </View>
-                        <View style={styles.historyInfo}>
-                          <Text style={styles.historyCustomer}>
-                            {client.firstName || ''} {client.lastName || ''}
-                          </Text>
-                          <Text style={styles.historyDate}>{client.email || ''}</Text>
-                          {client.phoneNumber && (
-                            <Text style={styles.historyDate}>{client.phoneNumber}</Text>
-                          )}
-                        </View>
-                      </View>
-                      <View style={styles.historyStatus}>
-                        <View style={[styles.statusBadge, client.isActive !== false && { backgroundColor: '#D1FAE5' }]}>
-                          <Text style={[styles.statusText, client.isActive !== false && { color: '#10B981' }]}>
-                            {client.isActive !== false ? 'Actif' : 'Inactif'}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  ))}
-                </>
-              )}
-            </View>
+            <PartnerHistory
+              searchQuery={searchQuery}
+              filterPeriod={filterPeriod}
+              selectedStoreId={selectedStoreId}
+              stores={stores}
+              transactions={transactions}
+              transactionsLoading={transactionsLoading}
+              transactionsError={transactionsError}
+              onSearchChange={setSearchQuery}
+              onFilterPeriodChange={setFilterPeriod}
+              onStoreFilterChange={setSelectedStoreId}
+              onExportData={handleExportData}
+            />
           )}
 
           {selectedTab === 'subscription' && (
-            <View style={styles.subscriptionSection}>
-              {mockSubscriptions.map((sub) => (
-                <View key={sub.id} style={styles.subscriptionCard}>
-                  <View style={styles.subscriptionHeader}>
-                    <View>
-                      <Text style={styles.subscriptionPlanName}>{sub.planName}</Text>
-                      <Text style={styles.subscriptionPrice}>
-                        {sub.price}€ / {sub.period}
-                      </Text>
-                    </View>
-                    <View style={styles.subscriptionStatusBadge}>
-                      <Text style={styles.subscriptionStatusText}>Actif</Text>
-                    </View>
-                  </View>
-                  <View style={styles.subscriptionFeatures}>
-                    {sub.features.map((feature, index) => (
-                      <View key={index} style={styles.featureItem}>
-                        <Ionicons name="checkmark" size={16} color="#10B981" />
-                        <Text style={styles.featureText}>{feature}</Text>
-                      </View>
-                    ))}
-                  </View>
-                  <View style={styles.subscriptionFooter}>
-                    <Text style={styles.subscriptionNextBilling}>
-                      Prochain paiement : {new Date(sub.nextBilling).toLocaleDateString('fr-FR')}
-                    </Text>
-                    <TouchableOpacity style={styles.manageButton}>
-                      <Text style={styles.manageButtonText}>Gérer l&apos;abonnement</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
-            </View>
+            <PartnerSubscription subscriptions={mockSubscriptions} />
           )}
 
           {selectedTab === 'stores' && (
-            <View style={styles.storesSection}>
-              <Text style={styles.sectionTitle}>Mes Magasins</Text>
-
-              {/* Barre de recherche */}
-              <View style={styles.searchContainer}>
-                <Ionicons name="search" size={20} color={Colors.text.secondary} style={styles.searchIcon} />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Rechercher un magasin..."
-                  placeholderTextColor={Colors.text.secondary}
-                  value={storeSearchQuery}
-                  onChangeText={setStoreSearchQuery}
-                />
-                {storeSearchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setStoreSearchQuery('')}>
-                    <Ionicons name="close-circle" size={20} color={Colors.text.secondary} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Liste des stores */}
-              {storesLoading ? (
-                <View style={styles.emptyState}>
-                  <ActivityIndicator size="large" color={Colors.primary[600]} />
-                  <Text style={styles.emptyStateText}>Chargement des magasins...</Text>
-                </View>
-              ) : storesError ? (
-                <View style={styles.emptyState}>
-                  <Ionicons name="alert-circle" size={64} color={Colors.status.error} />
-                  <Text style={styles.emptyStateTitle}>Erreur</Text>
-                  <Text style={styles.emptyStateText}>{storesError}</Text>
-                </View>
-              ) : filteredStores.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Ionicons name="storefront-outline" size={64} color={Colors.text.secondary} />
-                  <Text style={styles.emptyStateTitle}>Aucun magasin</Text>
-                  <Text style={styles.emptyStateText}>
-                    {storeSearchQuery ? 'Aucun magasin ne correspond à votre recherche' : 'Aucun magasin trouvé'}
-                  </Text>
-                </View>
-              ) : (
-                <>
-                  <View style={styles.resultsCount}>
-                    <Text style={styles.resultsCountText}>
-                      {filteredStores.length} magasin{filteredStores.length > 1 ? 's' : ''}
-                    </Text>
-                  </View>
-                  {filteredStores.map((store) => {
-                    const partner = store.partner || store.partnerData;
-                    const address = store.address;
-                    const addressString = address 
-                      ? `${address.street || ''} ${address.postalCode || ''} ${address.city || ''}`.trim()
-                      : 'Adresse non renseignée';
-
-                    return (
-                      <TouchableOpacity
-                        key={store.id}
-                        style={styles.storeCard}
-                        onPress={() => handleStoreSelect(store)}
-                      >
-                        <View style={styles.storeCardHeader}>
-                          <View style={styles.storeIcon}>
-                            <Ionicons name="storefront" size={24} color={Colors.primary[600]} />
-                          </View>
-                          <View style={styles.storeInfo}>
-                            <Text style={styles.storeName}>
-                              {store.name || partner?.name || 'Magasin sans nom'}
-                            </Text>
-                            {store.category && (
-                              <Text style={styles.storeCategory}>{store.category}</Text>
-                            )}
-                            <View style={styles.storeAddressRow}>
-                              <Ionicons name="location" size={14} color={Colors.text.secondary} />
-                              <Text style={styles.storeAddress} numberOfLines={1}>
-                                {addressString}
-                              </Text>
-                            </View>
-                          </View>
-                          <Ionicons name="chevron-forward" size={20} color={Colors.text.secondary} />
-                        </View>
-                        {store.isOpen !== undefined && (
-                          <View style={styles.storeStatus}>
-                            <View style={[styles.statusBadge, store.isOpen ? styles.statusBadgeOpen : styles.statusBadgeClosed]}>
-                              <Ionicons 
-                                name="time" 
-                                size={12} 
-                                color={store.isOpen ? '#10B981' : Colors.status.error} 
-                              />
-                              <Text style={[styles.statusText, { color: store.isOpen ? '#10B981' : Colors.status.error }]}>
-                                {store.isOpen ? 'Ouvert' : 'Fermé'}
-                              </Text>
-                            </View>
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </>
-              )}
-            </View>
+            <PartnerStores
+              storeSearchQuery={storeSearchQuery}
+              stores={stores}
+              storesLoading={storesLoading}
+              storesError={storesError}
+              filteredStores={filteredStores}
+              onSearchChange={setStoreSearchQuery}
+              onStoreSelect={handleStoreSelect}
+            />
           )}
 
-          {selectedTab === 'stats' && (
-            <View style={styles.statsSection}>
-              <Text style={styles.sectionTitle}>Statistiques détaillées</Text>
-              
-              {/* Graphiques de revenus */}
-              <View style={styles.statsCard}>
-                <Text style={styles.statsCardTitle}>Évolution des revenus</Text>
-                <View style={styles.chartContainer}>
-                  <View style={styles.chartBars}>
-                    {[65, 80, 45, 90, 70, 85, 95].map((height, index) => (
-                      <View key={index} style={styles.chartBarWrapper}>
-                        <View style={[styles.chartBar, { height: `${height}%` }]} />
-                        <Text style={styles.chartLabel}>{['L', 'M', 'M', 'J', 'V', 'S', 'D'][index]}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              </View>
-
-              {/* Statistiques par période */}
-              <View style={styles.periodStatsGrid}>
-                <View style={styles.periodStatCard}>
-                  <View style={styles.periodStatHeader}>
-                    <Ionicons name="calendar" size={18} color={Colors.primary[600]} />
-                    <Text style={styles.periodStatLabel}>Cette semaine</Text>
-                  </View>
-                  <Text style={styles.periodStatValue}>142.50€</Text>
-                  <View style={styles.periodStatTrend}>
-                    <Ionicons name="trending-up" size={16} color="#10B981" />
-                    <Text style={styles.periodStatTrendText}>+12% vs semaine dernière</Text>
-                  </View>
-                </View>
-                <View style={styles.periodStatCard}>
-                  <View style={styles.periodStatHeader}>
-                    <Ionicons name="calendar-outline" size={18} color={Colors.primary[600]} />
-                    <Text style={styles.periodStatLabel}>Ce mois</Text>
-                  </View>
-                  <Text style={styles.periodStatValue}>587.30€</Text>
-                  <View style={styles.periodStatTrend}>
-                    <Ionicons name="trending-up" size={16} color="#10B981" />
-                    <Text style={styles.periodStatTrendText}>+8% vs mois dernier</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Indicateurs de performance */}
-              <View style={styles.performanceCard}>
-                <Text style={styles.statsCardTitle}>Indicateurs de performance</Text>
-                <View style={styles.performanceGrid}>
-                  <View style={styles.performanceItem}>
-                    <View style={styles.performanceIcon}>
-                      <Ionicons name="people" size={20} color="#3B82F6" />
-                    </View>
-                    <Text style={styles.performanceValue}>24</Text>
-                    <Text style={styles.performanceLabel}>Clients uniques</Text>
-                  </View>
-                  <View style={styles.performanceItem}>
-                    <View style={[styles.performanceIcon, { backgroundColor: '#FEF3C7' }]}>
-                      <Ionicons name="time" size={20} color="#F59E0B" />
-                    </View>
-                    <Text style={styles.performanceValue}>2.3</Text>
-                    <Text style={styles.performanceLabel}>Visites moy./client</Text>
-                  </View>
-                  <View style={styles.performanceItem}>
-                    <View style={[styles.performanceIcon, { backgroundColor: '#D1FAE5' }]}>
-                      <Ionicons name="cash" size={20} color="#10B981" />
-                    </View>
-                    <Text style={styles.performanceValue}>24.45€</Text>
-                    <Text style={styles.performanceLabel}>Panier moyen</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Top clients */}
-              <View style={styles.statsCard}>
-                <Text style={styles.statsCardTitle}>Top clients</Text>
-                {[
-                  { name: 'Marie Dupont', visits: 12, total: 186.50 },
-                  { name: 'Jean Martin', visits: 8, total: 124.75 },
-                  { name: 'Sophie Bernard', visits: 6, total: 98.00 },
-                ].map((client, index) => (
-                  <View key={index} style={styles.topClientItem}>
-                    <View style={styles.topClientRank}>
-                      <Text style={styles.topClientRankText}>#{index + 1}</Text>
-                    </View>
-                    <View style={styles.topClientInfo}>
-                      <Text style={styles.topClientName}>{client.name}</Text>
-                      <Text style={styles.topClientDetails}>
-                        {client.visits} visites • {client.total.toFixed(2)}€
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color={Colors.text.secondary} />
-                  </View>
-                ))}
-              </View>
-
-              {/* Heures de pointe */}
-              <View style={styles.statsCard}>
-                <Text style={styles.statsCardTitle}>Heures de pointe</Text>
-                <View style={styles.peakHoursContainer}>
-                  {[
-                    { hour: '10h', value: 15 },
-                    { hour: '12h', value: 45 },
-                    { hour: '14h', value: 30 },
-                    { hour: '18h', value: 60 },
-                    { hour: '20h', value: 25 },
-                  ].map((item, index) => (
-                    <View key={index} style={styles.peakHourItem}>
-                      <Text style={styles.peakHourLabel}>{item.hour}</Text>
-                      <View style={styles.peakHourBarContainer}>
-                        <View style={[styles.peakHourBar, { width: `${item.value}%` }]} />
-                      </View>
-                      <Text style={styles.peakHourValue}>{item.value}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            </View>
-          )}
+          {selectedTab === 'stats' && <PartnerStats />}
         </ScrollView>
 
-        {/* Barre de navigation en bas */}
-        <SafeAreaView edges={['bottom']} style={styles.bottomNavBarContainer}>
-          <View style={styles.bottomNavBar}>
-          <TouchableOpacity
-            style={[styles.bottomNavItem, selectedTab === 'overview' && styles.bottomNavItemActive]}
-            onPress={() => setSelectedTab('overview')}
-          >
-            <Ionicons
-              name={selectedTab === 'overview' ? "grid" : "grid-outline"}
-              size={24}
-              color={selectedTab === 'overview' ? '#F59E0B' : Colors.text.secondary}
-            />
-            <Text
-              style={[
-                styles.bottomNavText,
-                selectedTab === 'overview' && styles.bottomNavTextActive,
-              ]}
-            >
-              Vue d&apos;ensemble
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.bottomNavItem, selectedTab === 'history' && styles.bottomNavItemActive]}
-            onPress={() => setSelectedTab('history')}
-          >
-            <Ionicons
-              name={selectedTab === 'history' ? "time" : "time-outline"}
-              size={24}
-              color={selectedTab === 'history' ? '#F59E0B' : Colors.text.secondary}
-            />
-            <Text
-              style={[
-                styles.bottomNavText,
-                selectedTab === 'history' && styles.bottomNavTextActive,
-              ]}
-            >
-              Historique
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.bottomNavItem, selectedTab === 'stats' && styles.bottomNavItemActive]}
-            onPress={() => setSelectedTab('stats')}
-          >
-            <Ionicons
-              name={selectedTab === 'stats' ? "stats-chart" : "stats-chart-outline"}
-              size={24}
-              color={selectedTab === 'stats' ? '#F59E0B' : Colors.text.secondary}
-            />
-            <Text
-              style={[
-                styles.bottomNavText,
-                selectedTab === 'stats' && styles.bottomNavTextActive,
-              ]}
-            >
-              Statistiques
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.bottomNavItem, selectedTab === 'subscription' && styles.bottomNavItemActive]}
-            onPress={() => setSelectedTab('subscription')}
-          >
-            <Ionicons
-              name={selectedTab === 'subscription' ? "card" : "card-outline"}
-              size={24}
-              color={selectedTab === 'subscription' ? '#F59E0B' : Colors.text.secondary}
-            />
-            <Text
-              style={[
-                styles.bottomNavText,
-                selectedTab === 'subscription' && styles.bottomNavTextActive,
-              ]}
-            >
-              Abonnement
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.bottomNavItem, selectedTab === 'stores' && styles.bottomNavItemActive]}
-            onPress={() => setSelectedTab('stores')}
-          >
-            <Ionicons
-              name={selectedTab === 'stores' ? "storefront" : "storefront-outline"}
-              size={24}
-              color={selectedTab === 'stores' ? '#F59E0B' : Colors.text.secondary}
-            />
-            <Text
-              style={[
-                styles.bottomNavText,
-                selectedTab === 'stores' && styles.bottomNavTextActive,
-              ]}
-            >
-              Magasins
-            </Text>
-          </TouchableOpacity>
-          </View>
+        <PartnerBottomNav selectedTab={selectedTab} onTabChange={setSelectedTab} />
         </SafeAreaView>
 
-        {/* Modal détails du store */}
-        <Modal
+        <PartnerStoreModal
           visible={showStoreModal}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setShowStoreModal(false)}
-        >
-          <SafeAreaView style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <TouchableOpacity 
-                style={styles.closeButton} 
-                onPress={() => {
-                  setShowStoreModal(false);
-                  setSelectedStore(null);
-                }}
-              >
-                <Ionicons name="close" size={24} color={Colors.text.primary} />
-              </TouchableOpacity>
-              <Text style={styles.modalTitle}>Détails du magasin</Text>
-              <View style={styles.placeholder} />
-            </View>
-            
-            {selectedStore && (
-              <ScrollView style={styles.modalContent} contentContainerStyle={styles.modalContentContainer}>
-                {storeDetailLoading && (
-                  <View style={styles.modalLoading}>
-                    <ActivityIndicator size="small" color={Colors.primary[600]} />
-                    <Text style={styles.modalLoadingText}>Chargement...</Text>
-                  </View>
-                )}
+          selectedStore={selectedStore}
+          loading={storeDetailLoading}
+          onClose={() => {
+            setShowStoreModal(false);
+            setSelectedStore(null);
+          }}
+        />
 
-                <View style={styles.storeDetailCard}>
-                  <View style={styles.storeDetailIcon}>
-                    <Ionicons name="storefront" size={48} color={Colors.primary[600]} />
-                  </View>
-                  
-                  <Text style={styles.storeDetailName}>
-                    {selectedStore.name || selectedStore.partner?.name || 'Magasin sans nom'}
-                  </Text>
-
-                  {selectedStore.category && (
-                    <View style={styles.storeDetailCategory}>
-                      <Ionicons name="pricetag" size={16} color={Colors.text.secondary} />
-                      <Text style={styles.storeDetailCategoryText}>{selectedStore.category}</Text>
-                    </View>
-                  )}
-
-                  {selectedStore.address && (
-                    <View style={styles.storeDetailAddress}>
-                      <Ionicons name="location" size={18} color={Colors.text.secondary} />
-                      <View style={styles.storeDetailAddressText}>
-                        {selectedStore.address.street && (
-                          <Text style={styles.storeDetailAddressLine}>
-                            {selectedStore.address.street}
-                          </Text>
-                        )}
-                        <Text style={styles.storeDetailAddressLine}>
-                          {[selectedStore.address.postalCode, selectedStore.address.city]
-                            .filter(Boolean)
-                            .join(' ')}
-                        </Text>
-                        {selectedStore.address.country && (
-                          <Text style={styles.storeDetailAddressLine}>
-                            {selectedStore.address.country}
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-                  )}
-
-                  {selectedStore.isOpen !== undefined && (
-                    <View style={styles.storeDetailStatus}>
-                      <View style={[styles.statusBadge, selectedStore.isOpen ? styles.statusBadgeOpen : styles.statusBadgeClosed]}>
-                        <Ionicons 
-                          name="time" 
-                          size={16} 
-                          color={selectedStore.isOpen ? '#10B981' : Colors.status.error} 
-                        />
-                        <Text style={[styles.statusText, { color: selectedStore.isOpen ? '#10B981' : Colors.status.error }]}>
-                          {selectedStore.isOpen ? 'Ouvert' : 'Fermé'}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-
-                  {selectedStore.partner && (
-                    <View style={styles.storeDetailPartner}>
-                      <Text style={styles.storeDetailPartnerTitle}>Partenaire</Text>
-                      <Text style={styles.storeDetailPartnerName}>
-                        {selectedStore.partner.name || 'N/A'}
-                      </Text>
-                      {selectedStore.partner.email && (
-                        <Text style={styles.storeDetailPartnerEmail}>
-                          {selectedStore.partner.email}
-                        </Text>
-                      )}
-                    </View>
-                  )}
-
-                  {selectedStore.description && (
-                    <View style={styles.storeDetailDescription}>
-                      <Text style={styles.storeDetailDescriptionTitle}>Description</Text>
-                      <Text style={styles.storeDetailDescriptionText}>
-                        {selectedStore.description}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </ScrollView>
-            )}
-          </SafeAreaView>
-        </Modal>
-      </SafeAreaView>
-    </NavigationTransition>
-  );
-}
+        <QRScanner
+          visible={showQRScanner}
+          onClose={() => setShowQRScanner(false)}
+          onScan={handleQRScanned}
+          mode="partner"
+        />
+        </LinearGradient>
+      </NavigationTransition>
+    );
+  }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.light,
+  } as ViewStyle,
+  safeArea: {
+    flex: 1,
   } as ViewStyle,
   header: {
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.xl,
-  } as ViewStyle,
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  } as ViewStyle,
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.md,
   } as ViewStyle,
   headerTitle: {
-    fontSize: Typography.sizes['2xl'],
-    fontWeight: '800',
-    color: 'white',
+    fontSize: Typography.sizes['3xl'],
+    fontWeight: Typography.weights.bold as any,
+    color: Colors.text.light,
     marginBottom: Spacing.xs,
   } as TextStyle,
   headerSubtitle: {
     fontSize: Typography.sizes.base,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: Colors.text.secondary,
   } as TextStyle,
   notificationButton: {
     padding: Spacing.sm,
@@ -1321,43 +788,46 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   bottomNavBarContainer: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'white',
-  } as ViewStyle,
-  bottomNavBar: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: Colors.primary[100],
-    paddingBottom: Spacing.sm,
-    paddingTop: Spacing.sm,
+    bottom: 8,
+    left: 8,
+    right: 8,
+    backgroundColor: '#1A0A0E',
+    borderTopWidth: 0,
+    borderRadius: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 8,
   } as ViewStyle,
+  bottomNavBar: {
+    flexDirection: 'row',
+    backgroundColor: 'transparent',
+    paddingBottom: 12,
+    paddingTop: 12,
+    height: 70,
+  } as ViewStyle,
   bottomNavItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: Spacing.xs,
-    gap: 4,
+    gap: 2,
   } as ViewStyle,
   bottomNavItemActive: {
     // Style pour l'item actif
   } as ViewStyle,
   bottomNavText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
-    color: Colors.text.secondary,
+    color: 'rgba(255, 255, 255, 0.5)',
     marginTop: 2,
   } as TextStyle,
   bottomNavTextActive: {
-    color: '#F59E0B',
-    fontWeight: '700',
+    color: '#8B2F3F',
+    fontWeight: '600',
   } as TextStyle,
   statsGrid: {
     flexDirection: 'row',
@@ -1366,9 +836,11 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   statCard: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: BorderRadius.xl,
-    padding: Spacing.md,
+    padding: Spacing.lg,
     alignItems: 'center',
     ...Shadows.md,
   } as ViewStyle,
@@ -1382,19 +854,22 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   } as ViewStyle,
   statValue: {
-    fontSize: Typography.sizes.xl,
-    fontWeight: '800',
-    color: '#10B981',
+    fontSize: Typography.sizes['3xl'],
+    fontWeight: Typography.weights.bold as any,
+    color: Colors.text.light,
     marginBottom: Spacing.xs,
   } as TextStyle,
   statLabel: {
-    fontSize: Typography.sizes.sm,
+    fontSize: Typography.sizes.xs,
     color: Colors.text.secondary,
-    fontWeight: '500',
+    fontWeight: Typography.weights.medium as any,
+    letterSpacing: 0.5,
   } as TextStyle,
   qrCard: {
-    backgroundColor: 'white',
-    borderRadius: BorderRadius.xl,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    borderRadius: BorderRadius['2xl'],
     padding: Spacing.xl,
     marginBottom: Spacing.lg,
     ...Shadows.lg,
@@ -1402,7 +877,7 @@ const styles = StyleSheet.create({
   qrCardTitle: {
     fontSize: Typography.sizes.xl,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     marginBottom: Spacing.xs,
   } as TextStyle,
   qrCardSubtitle: {
@@ -1461,12 +936,12 @@ const styles = StyleSheet.create({
   qrCode: {
     width: 200,
     height: 200,
-    backgroundColor: 'white',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderWidth: 3,
     borderColor: '#F59E0B',
     borderStyle: 'dashed',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
   } as ViewStyle,
   qrGrid: {
     flex: 1,
@@ -1551,13 +1026,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: Typography.sizes.lg,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     marginBottom: Spacing.md,
   } as TextStyle,
   transactionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: BorderRadius.lg,
     padding: Spacing.md,
     marginBottom: Spacing.sm,
@@ -1578,7 +1055,7 @@ const styles = StyleSheet.create({
   transactionName: {
     fontSize: Typography.sizes.base,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     marginBottom: 2,
   } as TextStyle,
   transactionDate: {
@@ -1594,7 +1071,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   } as ViewStyle,
   historyCard: {
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: BorderRadius.xl,
     padding: Spacing.md,
     marginBottom: Spacing.md,
@@ -1614,7 +1093,7 @@ const styles = StyleSheet.create({
   historyCustomer: {
     fontSize: Typography.sizes.base,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     marginBottom: 2,
   } as TextStyle,
   historyDate: {
@@ -1630,6 +1109,57 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
   } as ViewStyle,
+  amountBadge: {
+    alignItems: 'flex-end',
+    gap: 4,
+  } as ViewStyle,
+  amountText: {
+    fontSize: Typography.sizes.lg,
+    fontWeight: '700',
+    color: Colors.text.light,
+  } as TextStyle,
+  discountText: {
+    fontSize: Typography.sizes.sm,
+    fontWeight: '600',
+    color: Colors.status.success,
+  } as TextStyle,
+  storeFilterContainer: {
+    marginBottom: Spacing.md,
+  } as ViewStyle,
+  storeFilterLabel: {
+    fontSize: Typography.sizes.sm,
+    fontWeight: '600',
+    color: Colors.text.light,
+    marginBottom: Spacing.xs,
+  } as TextStyle,
+  storeFilterScroll: {
+    marginBottom: Spacing.sm,
+  } as ViewStyle,
+  storeFilterContent: {
+    gap: Spacing.sm,
+  } as ViewStyle,
+  storeFilterChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    marginRight: Spacing.sm,
+  } as ViewStyle,
+  storeFilterChipActive: {
+    backgroundColor: 'rgba(139, 47, 63, 0.3)',
+    borderColor: '#8B2F3F',
+  } as ViewStyle,
+  storeFilterChipText: {
+    fontSize: Typography.sizes.sm,
+    fontWeight: '500',
+    color: Colors.text.secondary,
+  } as TextStyle,
+  storeFilterChipTextActive: {
+    color: Colors.text.light,
+    fontWeight: '600',
+  } as TextStyle,
   statusBadge: {
     backgroundColor: '#D1FAE5',
     paddingHorizontal: Spacing.sm,
@@ -1645,7 +1175,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   } as ViewStyle,
   subscriptionCard: {
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: BorderRadius.xl,
     padding: Spacing.lg,
     ...Shadows.lg,
@@ -1662,7 +1194,7 @@ const styles = StyleSheet.create({
   subscriptionPlanName: {
     fontSize: Typography.sizes.xl,
     fontWeight: '800',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     marginBottom: Spacing.xs,
   } as TextStyle,
   subscriptionPrice: {
@@ -1692,7 +1224,7 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   featureText: {
     fontSize: Typography.sizes.base,
-    color: Colors.text.primary,
+    color: Colors.text.light,
     fontWeight: '500',
   } as TextStyle,
   subscriptionFooter: {
@@ -1724,7 +1256,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   } as ViewStyle,
   statsCard: {
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: BorderRadius.xl,
     padding: Spacing.lg,
     marginBottom: Spacing.md,
@@ -1733,7 +1267,7 @@ const styles = StyleSheet.create({
   statsCardTitle: {
     fontSize: Typography.sizes.lg,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     marginBottom: Spacing.md,
   } as TextStyle,
   chartContainer: {
@@ -1771,7 +1305,9 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   periodStatCard: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: BorderRadius.xl,
     padding: Spacing.md,
     ...Shadows.md,
@@ -1784,7 +1320,7 @@ const styles = StyleSheet.create({
   periodStatValue: {
     fontSize: Typography.sizes.xl,
     fontWeight: '800',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     marginBottom: Spacing.xs,
   } as TextStyle,
   periodStatTrend: {
@@ -1824,7 +1360,7 @@ const styles = StyleSheet.create({
   topClientName: {
     fontSize: Typography.sizes.base,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     marginBottom: 2,
   } as TextStyle,
   topClientDetails: {
@@ -1862,7 +1398,7 @@ const styles = StyleSheet.create({
     width: 30,
     fontSize: Typography.sizes.sm,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     textAlign: 'right',
   } as TextStyle,
   
@@ -1932,9 +1468,11 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   quickActionCard: {
     flex: 1,
-    backgroundColor: 'white',
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.md,
     alignItems: 'center',
     ...Shadows.md,
   } as ViewStyle,
@@ -1950,7 +1488,7 @@ const styles = StyleSheet.create({
   quickActionLabel: {
     fontSize: Typography.sizes.sm,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     marginBottom: 2,
   } as TextStyle,
   quickActionSubtext: {
@@ -1982,13 +1520,13 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: BorderRadius.lg,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     marginBottom: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.primary[100],
     ...Shadows.sm,
   } as ViewStyle,
   searchIcon: {
@@ -1997,7 +1535,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: Typography.sizes.base,
-    color: Colors.text.primary,
+    color: Colors.text.light,
   } as TextStyle,
   filtersContainer: {
     marginBottom: Spacing.md,
@@ -2043,7 +1581,7 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: Typography.sizes.lg,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     marginTop: Spacing.md,
     marginBottom: Spacing.xs,
   } as TextStyle,
@@ -2062,7 +1600,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   } as ViewStyle,
   performanceCard: {
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: BorderRadius.xl,
     padding: Spacing.lg,
     marginBottom: Spacing.md,
@@ -2089,7 +1629,7 @@ const styles = StyleSheet.create({
   performanceValue: {
     fontSize: Typography.sizes.xl,
     fontWeight: '800',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     marginBottom: Spacing.xs,
   } as TextStyle,
   performanceLabel: {
@@ -2104,7 +1644,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   } as ViewStyle,
   storeCard: {
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: BorderRadius.xl,
     padding: Spacing.md,
     marginBottom: Spacing.md,
@@ -2130,7 +1672,7 @@ const styles = StyleSheet.create({
   storeName: {
     fontSize: Typography.sizes.base,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     marginBottom: 4,
   } as TextStyle,
   storeCategory: {
@@ -2172,7 +1714,9 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: Colors.primary[200],
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
   } as ViewStyle,
   closeButton: {
     padding: Spacing.sm,
@@ -2180,7 +1724,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: Typography.sizes.lg,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.text.light,
   } as TextStyle,
   placeholder: {
     width: 40,
@@ -2203,7 +1747,9 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
   } as TextStyle,
   storeDetailCard: {
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: BorderRadius.xl,
     padding: Spacing.xl,
     ...Shadows.lg,
@@ -2215,7 +1761,7 @@ const styles = StyleSheet.create({
   storeDetailName: {
     fontSize: Typography.sizes['2xl'],
     fontWeight: '800',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     textAlign: 'center',
     marginBottom: Spacing.md,
   } as TextStyle,
@@ -2245,7 +1791,7 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   storeDetailAddressLine: {
     fontSize: Typography.sizes.base,
-    color: Colors.text.primary,
+    color: Colors.text.light,
     marginBottom: 2,
   } as TextStyle,
   storeDetailStatus: {
@@ -2268,7 +1814,7 @@ const styles = StyleSheet.create({
   storeDetailPartnerName: {
     fontSize: Typography.sizes.lg,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.text.light,
     marginBottom: 4,
   } as TextStyle,
   storeDetailPartnerEmail: {
@@ -2290,7 +1836,7 @@ const styles = StyleSheet.create({
   } as TextStyle,
   storeDetailDescriptionText: {
     fontSize: Typography.sizes.base,
-    color: Colors.text.primary,
+    color: Colors.text.light,
     lineHeight: 22,
   } as TextStyle,
 });
