@@ -27,7 +27,7 @@ export function PartnerStats() {
       <View style={styles.periodStatsGrid}>
         <View style={styles.periodStatCard}>
           <View style={styles.periodStatHeader}>
-            <Ionicons name="calendar" size={18} color={Colors.primary[600]} />
+            <Ionicons name="calendar" size={18} color="#8B2F3F" />
             <Text style={styles.periodStatLabel}>Cette semaine</Text>
           </View>
           <Text style={styles.periodStatValue}>142.50€</Text>
@@ -38,7 +38,7 @@ export function PartnerStats() {
         </View>
         <View style={styles.periodStatCard}>
           <View style={styles.periodStatHeader}>
-            <Ionicons name="calendar-outline" size={18} color={Colors.primary[600]} />
+            <Ionicons name="calendar-outline" size={18} color="#8B2F3F" />
             <Text style={styles.periodStatLabel}>Ce mois</Text>
           </View>
           <Text style={styles.periodStatValue}>587.30€</Text>
@@ -54,8 +54,8 @@ export function PartnerStats() {
         <Text style={styles.statsCardTitle}>Indicateurs de performance</Text>
         <View style={styles.performanceGrid}>
           <View style={styles.performanceItem}>
-            <View style={styles.performanceIcon}>
-              <Ionicons name="people" size={20} color="#3B82F6" />
+            <View style={[styles.performanceIcon, { backgroundColor: 'rgba(139, 47, 63, 0.25)' }]}>
+              <Ionicons name="people" size={20} color="#8B2F3F" />
             </View>
             <Text style={styles.performanceValue}>24</Text>
             <Text style={styles.performanceLabel}>Clients uniques</Text>
@@ -168,10 +168,15 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   chartBar: {
     width: '80%',
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#8B2F3F',
     borderRadius: BorderRadius.sm,
     minHeight: 20,
     marginBottom: Spacing.xs,
+    shadowColor: '#8B2F3F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   } as ViewStyle,
   chartLabel: {
     fontSize: Typography.sizes.xs,
@@ -241,7 +246,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: BorderRadius.full,
-    backgroundColor: '#DBEAFE',
+    backgroundColor: 'rgba(139, 47, 63, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.sm,
@@ -263,13 +268,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.primary[100],
+    borderBottomColor: 'rgba(139, 47, 63, 0.2)',
   } as ViewStyle,
   topClientRank: {
     width: 32,
     height: 32,
     borderRadius: BorderRadius.full,
-    backgroundColor: Colors.primary[50],
+    backgroundColor: 'rgba(139, 47, 63, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Spacing.md,
@@ -277,7 +282,7 @@ const styles = StyleSheet.create({
   topClientRankText: {
     fontSize: Typography.sizes.sm,
     fontWeight: '800',
-    color: Colors.primary[600],
+    color: '#8B2F3F',
   } as TextStyle,
   topClientInfo: {
     flex: 1,
@@ -310,13 +315,13 @@ const styles = StyleSheet.create({
   peakHourBarContainer: {
     flex: 1,
     height: 8,
-    backgroundColor: Colors.primary[100],
+    backgroundColor: 'rgba(139, 47, 63, 0.2)',
     borderRadius: BorderRadius.full,
     overflow: 'hidden',
   } as ViewStyle,
   peakHourBar: {
     height: '100%',
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#8B2F3F',
     borderRadius: BorderRadius.full,
   } as ViewStyle,
   peakHourValue: {

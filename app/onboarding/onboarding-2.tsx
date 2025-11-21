@@ -32,7 +32,7 @@ export default function Onboarding2Screen() {
           }
           title="Sécurisé et simple"
           description="Votre QR code unique vous garantit des paiements sécurisés et rapides"
-          gradientColors={[...Colors.gradients.success]}
+          gradientColors={Colors.gradients.primary as any}
         />
         
         <View style={styles.paginationContainer}>

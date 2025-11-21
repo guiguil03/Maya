@@ -448,18 +448,39 @@ export const AuthService = {
    */
   signUp: async (registerData: RegisterRequest): Promise<PublicUser> => {
     try {
+      // Préparer le body de la requête avec tous les champs requis
+      const requestBody: any = {
+        email: registerData.email,
+        password: registerData.password,
+        firstName: registerData.firstName,
+        lastName: registerData.lastName,
+        birthDate: registerData.birthDate,
+        address: registerData.address,
+      };
+      
+      // Ajouter les champs optionnels s'ils sont présents
+      if (registerData.avatarBase64) {
+        requestBody.avatarBase64 = registerData.avatarBase64;
+      }
+      
+      // Ajouter le role s'il est présent (OBLIGATOIRE pour l'API)
+      // L'API attend "Role" avec majuscule selon l'erreur retournée
+      if (registerData.role) {
+        // Mapper "client" -> "Client" ou "partners" -> "Partner" selon ce que l'API attend
+        const roleValue = registerData.role === 'client' ? 'Client' : 
+                         registerData.role === 'partners' ? 'Partner' : 
+                         registerData.role;
+        requestBody.Role = roleValue;
+        // Aussi inclure en minuscule au cas où
+        requestBody.role = registerData.role;
+      }
+      
+      console.log('Données envoyées à l\'API:', JSON.stringify(requestBody, null, 2));
+      
       // Appel à l'API backend pour créer le compte
       const registerResponse = await apiCall<any>('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({
-          email: registerData.email,
-          password: registerData.password,
-          firstName: registerData.firstName,
-          lastName: registerData.lastName,
-          birthDate: registerData.birthDate,
-          address: registerData.address,
-          avatarBase64: registerData.avatarBase64,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       console.log('✅ Compte créé, réponse complète:', JSON.stringify(registerResponse, null, 2));
@@ -583,18 +604,27 @@ export const AuthService = {
 
   /**
    * Étape 1 - Vérifier l'existence de l'email et déclencher la procédure de reset
+   * POST /api/v1/auth/request-password-reset
    * @param email - Email de l'utilisateur
    */
   requestPasswordReset: async (email: string): Promise<void> => {
+    console.log('🔐 [Auth Service] requestPasswordReset appelé');
+    console.log('📋 [Auth Service] Paramètres:', { email });
+    console.log('🌐 [Auth Service] Appel API: POST /api/v1/auth/request-password-reset');
+    
     try {
+      const startTime = Date.now();
       await apiCall('/auth/request-password-reset', {
         method: 'POST',
         body: JSON.stringify({ email }),
       });
+      const duration = Date.now() - startTime;
 
-      console.log('📧 Email vérifié, procédure de reset démarrée');
+      console.log('✅ [Auth Service] Email vérifié, procédure de reset démarrée', {
+        duration: duration + 'ms',
+      });
     } catch (error) {
-      console.log('❌ Erreur lors de la vérification de l\'email:', error);
+      console.error('❌ [Auth Service] Erreur lors de la vérification de l\'email:', error);
       
       // Analyser le type d'erreur pour donner un message approprié
       if (error instanceof Error) {
@@ -637,16 +667,26 @@ export const AuthService = {
 
   /**
    * Étape 2 - Envoyer un code de réinitialisation
+   * POST /api/v1/auth/request-password-reset-code
    * @param email - Email de l'utilisateur
-   * @param phoneNumber - Numéro de téléphone (pour SMS)
-   * @param channel - Canal d'envoi (email ou sms)
+   * @param phoneNumber - Numéro de téléphone (pour SMS, optionnel)
+   * @param channel - Canal d'envoi ('email' ou 'sms')
    */
   requestPasswordResetCode: async (
     email: string,
     phoneNumber?: string,
     channel: 'email' | 'sms' = 'email'
   ): Promise<void> => {
+    console.log('🔐 [Auth Service] requestPasswordResetCode appelé');
+    console.log('📋 [Auth Service] Paramètres:', {
+      email,
+      phoneNumber: phoneNumber ? phoneNumber.substring(0, 3) + '***' : 'non fourni',
+      channel,
+    });
+    console.log('🌐 [Auth Service] Appel API: POST /api/v1/auth/request-password-reset-code');
+    
     try {
+      const startTime = Date.now();
       const payload: Record<string, string> = {
         email,
         channel,
@@ -660,10 +700,19 @@ export const AuthService = {
         method: 'POST',
         body: JSON.stringify(payload),
       });
+      const duration = Date.now() - startTime;
 
-      console.log(`📨 Code de reset envoyé via ${channel}`);
+      console.log(`✅ [Auth Service] Code de reset envoyé via ${channel}`, {
+        duration: duration + 'ms',
+      });
     } catch (error) {
-      console.log('❌ Erreur lors de l\'envoi du code:', error);
+      console.error('❌ [Auth Service] Erreur lors de l\'envoi du code:', error);
+      if (error instanceof Error) {
+        console.error('❌ [Auth Service] Détails de l\'erreur:', {
+          message: error.message,
+          name: error.name,
+        });
+      }
       throw new Error('Impossible d\'envoyer le code de vérification');
     }
   },
@@ -1073,29 +1122,12 @@ export const AuthService = {
         throw new Error('Google Client ID non configuré. Veuillez définir EXPO_PUBLIC_GOOGLE_CLIENT_ID');
       }
 
-      // Générer le redirect URI - Utiliser le proxy Expo qui génère un URI stable
-      // Le proxy Expo est recommandé par Google pour les applications en développement
-      // Utiliser useProxy: true génère automatiquement un URI qui fonctionne pour tous les utilisateurs
+      
       const redirectUri = AuthSession.makeRedirectUri({
         useProxy: true, // Utiliser le proxy Expo (URI stable et conforme, accessible à tous)
       });
 
-      console.log('🔗 [Auth Service] Redirect URI généré:', redirectUri);
-      console.log('⚠️ [Auth Service] CONFIGURATION REQUISE dans Google Cloud Console:');
-      console.log('   1. Allez sur https://console.cloud.google.com/apis/credentials');
-      console.log('   2. Sélectionnez votre OAuth 2.0 Client ID (type: Web application)');
-      console.log('   3. Dans "Authorized redirect URIs" (pas JavaScript Origins), ajoutez:');
-      console.log('      - Le redirect URI ci-dessus:', redirectUri);
-      console.log('      - Pour Expo Go: exp://127.0.0.1:8081');
-      console.log('      - Pour le proxy Expo (tous utilisateurs): https://auth.expo.io');
-      console.log('   4. Dans "Authorized JavaScript origins", ajoutez UNIQUEMENT:');
-      console.log('      - http://localhost:8083 (pour le développement local)');
-      console.log('      - https://auth.expo.io (sans chemin ni /)');
-      console.log('   5. IMPORTANT: Ne mettez PAS exp:// dans JavaScript Origins');
-      console.log('   6. Sauvegardez les modifications');
-
-      // Créer la requête d'authentification
-      // Utiliser Code flow avec PKCE pour être conforme aux politiques Google OAuth 2.0
+     
       const request = new AuthSession.AuthRequest({
         clientId: clientId,
         scopes: ['openid', 'profile', 'email'],

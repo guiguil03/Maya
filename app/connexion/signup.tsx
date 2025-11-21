@@ -300,7 +300,7 @@ export default function SignupScreen() {
                 {/* Message d'erreur global */}
                 {errorMessage ? (
                   <View style={styles.errorBanner}>
-                    <Ionicons name="alert-circle" size={20} color="#DC2626" />
+                    <Ionicons name="alert-circle" size={20} color="#EF4444" />
                     <Text style={styles.errorBannerText}>{errorMessage}</Text>
                   </View>
                 ) : null}
@@ -370,7 +370,7 @@ export default function SignupScreen() {
                       <View style={[styles.inputContainer, styles.halfWidth]}>
                         <Text style={styles.inputLabel}>Prénom *</Text>
                         <View style={[styles.inputWrapper, firstNameError ? styles.inputError : null]}>
-                          <Ionicons name="person" size={20} color={firstNameError ? "#DC2626" : "#9CA3AF"} style={styles.inputIcon as any} />
+                          <Ionicons name="person" size={20} color={firstNameError ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon as any} />
                           <TextInput
                             style={styles.input}
                             placeholder="Jean"
@@ -391,7 +391,7 @@ export default function SignupScreen() {
                       <View style={[styles.inputContainer, styles.halfWidth]}>
                         <Text style={styles.inputLabel}>Nom *</Text>
                         <View style={[styles.inputWrapper, lastNameError ? styles.inputError : null]}>
-                          <Ionicons name="person" size={20} color={lastNameError ? "#DC2626" : "#9CA3AF"} style={styles.inputIcon as any} />
+                          <Ionicons name="person" size={20} color={lastNameError ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon as any} />
                           <TextInput
                             style={styles.input}
                             placeholder="Dupont"
@@ -413,7 +413,7 @@ export default function SignupScreen() {
                     <View style={styles.inputContainer}>
                       <Text style={styles.inputLabel}>Email *</Text>
                       <View style={[styles.inputWrapper, emailError ? styles.inputError : null]}>
-                        <Ionicons name="mail" size={20} color={emailError ? "#DC2626" : "#9CA3AF"} style={styles.inputIcon as any} />
+                        <Ionicons name="mail" size={20} color={emailError ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon as any} />
                         <TextInput
                           style={styles.input}
                           placeholder="votre@email.com"
@@ -435,7 +435,7 @@ export default function SignupScreen() {
                     <View style={styles.inputContainer}>
                       <Text style={styles.inputLabel}>Date de naissance *</Text>
                       <View style={[styles.inputWrapper, birthDateError ? styles.inputError : null]}>
-                        <Ionicons name="calendar" size={20} color={birthDateError ? "#DC2626" : "#9CA3AF"} style={styles.inputIcon as any} />
+                        <Ionicons name="calendar" size={20} color={birthDateError ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon as any} />
                         <TextInput
                           style={styles.input}
                           placeholder="1990-01-15 ou 19900115"
@@ -463,7 +463,7 @@ export default function SignupScreen() {
                     <View style={styles.inputContainer}>
                       <Text style={styles.inputLabel}>Mot de passe *</Text>
                       <View style={[styles.inputWrapper, passwordError ? styles.inputError : null]}>
-                        <Ionicons name="lock-closed" size={20} color={passwordError ? "#DC2626" : "#9CA3AF"} style={styles.inputIcon as any} />
+                        <Ionicons name="lock-closed" size={20} color={passwordError ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon as any} />
                         <TextInput
                           style={styles.input}
                           placeholder="••••••••"
@@ -521,7 +521,7 @@ export default function SignupScreen() {
                     <View style={styles.inputContainer}>
                       <Text style={styles.inputLabel}>Confirmer le mot de passe *</Text>
                       <View style={[styles.inputWrapper, confirmError ? styles.inputError : null]}>
-                        <Ionicons name="lock-closed" size={20} color={confirmError ? "#DC2626" : "#9CA3AF"} style={styles.inputIcon as any} />
+                        <Ionicons name="lock-closed" size={20} color={confirmError ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon as any} />
                         <TextInput
                           style={styles.input}
                           placeholder="••••••••"
@@ -834,7 +834,7 @@ const styles = StyleSheet.create<SignupStyles>({
     backgroundColor: '#E5E7EB',
   },
   progressSegmentActive: {
-    backgroundColor: Colors.accent.rose,
+    backgroundColor: '#8B2F3F',
   },
   stepLabelsRow: {
     flexDirection: 'row',
@@ -845,7 +845,7 @@ const styles = StyleSheet.create<SignupStyles>({
     color: Colors.text.muted,
   },
   stepLabelActive: {
-    color: Colors.accent.rose,
+    color: '#8B2F3F',
     fontWeight: Typography.weights.semibold as any,
   },
   sectionTitle: {
@@ -901,7 +901,7 @@ const styles = StyleSheet.create<SignupStyles>({
     fontSize: 14,
   },
   switchAuthLink: {
-    color: Colors.accent.rose,
+    color: '#EF4444',
     fontSize: Typography.sizes.sm,
     fontWeight: Typography.weights.semibold as any,
   },
@@ -910,7 +910,7 @@ const styles = StyleSheet.create<SignupStyles>({
     alignItems: 'center',
     backgroundColor: '#FEE2E2',
     borderLeftWidth: 4,
-    borderLeftColor: '#DC2626',
+    borderLeftColor: '#EF4444',
     padding: 12,
     borderRadius: 8,
     marginBottom: 20,
@@ -923,12 +923,12 @@ const styles = StyleSheet.create<SignupStyles>({
     fontWeight: '500',
   },
   inputError: {
-    borderColor: '#DC2626',
+    borderColor: '#EF4444',
     borderWidth: 2,
     backgroundColor: '#FEF2F2',
   },
   fieldError: {
-    color: '#DC2626',
+    color: '#EF4444',
     fontSize: 12,
     marginTop: 4,
     marginLeft: 4,
@@ -1011,8 +1011,8 @@ const styles = StyleSheet.create<SignupStyles>({
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   roleButtonActive: {
-    backgroundColor: Colors.accent.rose,
-    borderColor: Colors.accent.rose,
+    backgroundColor: '#8B2F3F',
+    borderColor: '#8B2F3F',
     ...Shadows.md,
   },
   roleButtonText: {

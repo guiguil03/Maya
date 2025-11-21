@@ -59,7 +59,7 @@ export function PartnerHistory({
       <View style={styles.historyHeaderSection}>
         <Text style={styles.sectionTitle}>Historique complet</Text>
         <TouchableOpacity style={styles.exportButton} onPress={onExportData}>
-          <Ionicons name="download-outline" size={18} color={Colors.primary[600]} />
+          <Ionicons name="download-outline" size={18} color="#8B2F3F" />
           <Text style={styles.exportButtonText}>Exporter</Text>
         </TouchableOpacity>
       </View>
@@ -251,13 +251,15 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    backgroundColor: Colors.primary[50],
+    backgroundColor: 'rgba(139, 47, 63, 0.25)',
     borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 47, 63, 0.4)',
   } as ViewStyle,
   exportButtonText: {
     fontSize: Typography.sizes.sm,
     fontWeight: '700',
-    color: Colors.primary[600],
+    color: '#8B2F3F',
   } as TextStyle,
   searchContainer: {
     flexDirection: 'row',
@@ -290,13 +292,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
-    backgroundColor: Colors.primary[50],
+    backgroundColor: 'rgba(139, 47, 63, 0.15)',
     borderWidth: 1,
-    borderColor: Colors.primary[200],
+    borderColor: 'rgba(139, 47, 63, 0.3)',
   } as ViewStyle,
   filterChipActive: {
-    backgroundColor: Colors.primary[600],
-    borderColor: Colors.primary[600],
+    backgroundColor: '#8B2F3F',
+    borderColor: '#8B2F3F',
   } as ViewStyle,
   filterChipText: {
     fontSize: Typography.sizes.sm,

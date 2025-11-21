@@ -1,11 +1,10 @@
-import { AnimatedButton } from '@/components/common/animated-button';
 import { NavigationTransition } from '@/components/common/navigation-transition';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
 import { useAuth } from '@/hooks/use-auth';
 import { QrService, QrTokenData } from '@/services/qr.service';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Print from 'expo-print';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -343,6 +342,31 @@ export default function HomeScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
+            {/* Header de bienvenue */}
+            <View style={styles.welcomeHeader}>
+              <LinearGradient
+                colors={['#1A0A0E', '#2D0F15', '#1A0A0E']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.welcomeGradient}
+              >
+                <View style={styles.welcomeContent}>
+                  <View style={styles.welcomeTextContainer}>
+                    <View style={styles.welcomeContainer}>
+                      <Text style={styles.welcomeText}>Bonjour,</Text>
+                      <View style={styles.nameBadge}>
+                        <Ionicons name="sparkles" size={16} color="#8B2F3F" style={styles.sparkleIcon} />
+                        <Text style={styles.welcomeName}>
+                          {user?.firstName || 'Client'} {user?.lastName || ''}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.welcomeSubtitle}>Bienvenue sur votre tableau de bord</Text>
+                  </View>
+                </View>
+              </LinearGradient>
+            </View>
+
             {/* Statistiques en haut */}
             <View style={styles.statsContainer}>
               <View style={[styles.statCard, styles.savingsCard]}>
@@ -358,14 +382,26 @@ export default function HomeScreen() {
 
             {/* Accès rapide */}
           <View style={styles.quickActions}>
-            <View style={styles.quickAction}>
-              <Ionicons name="storefront" size={24} color="#3B82F6" />
+            <TouchableOpacity 
+              style={styles.quickAction}
+              onPress={() => router.push('/(tabs)/partners')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.quickActionIconContainer}>
+                <Ionicons name="storefront" size={24} color="#8B2F3F" />
+              </View>
               <Text style={styles.quickActionText}>Partenaires</Text>
-            </View>
-            <View style={styles.quickAction}>
-              <Ionicons name="card" size={24} color="#F59E0B" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.quickAction}
+              onPress={() => router.push('/(tabs)/subscription')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.quickActionIconContainer}>
+                <Ionicons name="card" size={24} color={Colors.accent.gold} />
+              </View>
               <Text style={styles.quickActionText}>Abonnement</Text>
-            </View>
+            </TouchableOpacity>
           </View>
           <View style={styles.qrCard}>
             <View style={styles.qrCardHeader}>
@@ -498,6 +534,52 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.xl,
   } as ViewStyle,
+  welcomeHeader: {
+    marginBottom: Spacing.xl,
+    borderRadius: BorderRadius.xl,
+    overflow: 'hidden',
+    ...Shadows.lg,
+  } as ViewStyle,
+  welcomeGradient: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.lg,
+  } as ViewStyle,
+  welcomeContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  } as ViewStyle,
+  welcomeTextContainer: {
+    flex: 1,
+  } as ViewStyle,
+  welcomeContainer: {
+    marginBottom: Spacing.xs,
+  } as ViewStyle,
+  welcomeText: {
+    fontSize: Typography.sizes.sm,
+    color: Colors.text.secondary,
+    fontWeight: Typography.weights.medium as any,
+    marginBottom: 4,
+  } as TextStyle,
+  nameBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  } as ViewStyle,
+  sparkleIcon: {
+    marginRight: 4,
+  } as ViewStyle,
+  welcomeName: {
+    fontSize: Typography.sizes['3xl'],
+    fontWeight: Typography.weights.bold as any,
+    color: Colors.text.light,
+    letterSpacing: -0.5,
+  } as TextStyle,
+  welcomeSubtitle: {
+    fontSize: Typography.sizes.base,
+    color: Colors.text.secondary,
+    marginTop: Spacing.xs,
+  } as TextStyle,
   quickActions: {
     flexDirection: 'row',
     gap: Spacing.md,

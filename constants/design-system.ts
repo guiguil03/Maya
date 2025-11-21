@@ -35,6 +35,9 @@ export const Colors = {
     dark: ['#1A0A0E', '#2D0F15', '#3A0F1A'] as const,
     card: ['#2D1B1F', '#3D2B2F', '#4D3B3F'] as const,
     blue: ['#1E3A8A', '#3B82F6', '#60A5FA'] as const,
+    success: ['#10B981', '#27EFA1', '#34D399'] as const,
+    warning: ['#EF4444', '#FF6B6B', '#F87171'] as const,
+    info: ['#3C4BFF', '#6366F1', '#818CF8'] as const,
   },
   background: {
     light: '#1A0A0E',

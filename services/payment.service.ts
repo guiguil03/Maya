@@ -265,18 +265,20 @@ export const PaymentService = {
 
   /**
    * Créer une session de checkout pour un abonnement
-   * @param planCode - Code du plan d'abonnement (ex: "solo", "duo", "family")
-   * @param successUrl - URL de redirection en cas de succès
+   * POST /api/payments/create-checkout-session
+   * 
+   * @param planCode - Code du plan d'abonnement (ex: "Solo", "Duo", "Family")
+   * @param successUrl - URL de redirection en cas de succès (peut contenir {CHECKOUT_SESSION_ID})
    * @param cancelUrl - URL de redirection en cas d'annulation
-   * @param billingCycle - Cycle de facturation ("monthly" ou "annual")
-   * @returns URL de la session de checkout ou données de la session
+   * @param billingCycle - Cycle de facturation ("monthly" ou "annual") - optionnel, peut être géré par le planCode
+   * @returns CreateCheckoutResult contenant sessionId et url
    */
   createCheckoutSession: async (
     planCode: string,
     successUrl: string,
     cancelUrl: string,
     billingCycle?: 'monthly' | 'annual'
-  ): Promise<any> => {
+  ): Promise<{ sessionId: string; url: string }> => {
     console.log('💳 [Payments Service] createCheckoutSession appelé');
     console.log('📋 [Payments Service] Paramètres:', {
       planCode,
@@ -298,7 +300,7 @@ export const PaymentService = {
         requestBody.billingCycle = billingCycle;
       }
       
-      const response = await paymentsApiCall<any>('/payments/create-checkout-session', {
+      const response = await paymentsApiCall<{ sessionId: string; url: string }>('/payments/create-checkout-session', {
         method: 'POST',
         body: JSON.stringify(requestBody),
       });
@@ -308,14 +310,19 @@ export const PaymentService = {
         duration: duration + 'ms',
         hasUrl: !!response?.url,
         hasSessionId: !!response?.sessionId,
-        responseKeys: response ? Object.keys(response) : [],
+        sessionId: response?.sessionId,
+        urlPreview: response?.url ? response.url.substring(0, 50) + '...' : 'N/A',
       });
 
-      if (response) {
-        console.log('📄 [Payments Service] Réponse complète:', JSON.stringify(response, null, 2));
+      // Valider que la réponse contient les champs requis
+      if (!response || (!response.url && !response.sessionId)) {
+        throw new Error('Réponse invalide de l\'API: URL ou sessionId manquant');
       }
 
-      return response;
+      return {
+        sessionId: response.sessionId || '',
+        url: response.url || '',
+      };
     } catch (error) {
       console.error('❌ [Payments Service] Erreur lors de la création de la session:', error);
       if (error instanceof Error) {

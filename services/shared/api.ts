@@ -22,7 +22,20 @@ export const apiCall = async <T>(
     method: finalOptions.method || 'GET',
     hasHeaders: !!finalOptions.headers,
     headersKeys: finalOptions.headers ? Object.keys(finalOptions.headers as Record<string, string>) : [],
+    hasBody: !!finalOptions.body,
+    bodyPreview: finalOptions.body ? (typeof finalOptions.body === 'string' ? finalOptions.body.substring(0, 200) + (finalOptions.body.length > 200 ? '...' : '') : String(finalOptions.body).substring(0, 200)) : undefined,
   });
+
+  // Log du body complet si présent
+  if (finalOptions.body && typeof finalOptions.body === 'string') {
+    console.log('📤 [API Call] Body JSON envoyé:', finalOptions.body);
+    try {
+      const bodyParsed = JSON.parse(finalOptions.body);
+      console.log('📤 [API Call] Body JSON parsé:', JSON.stringify(bodyParsed, null, 2));
+    } catch (e) {
+      console.log('📤 [API Call] Body n\'est pas du JSON valide:', finalOptions.body);
+    }
+  }
 
   const response = await fetch(url, finalOptions);
 

@@ -40,7 +40,7 @@ export function PartnerOverview({
           <Text style={styles.statLabel}>Revenus totaux</Text>
         </View>
         <View style={styles.statCard}>
-          <View style={[styles.statIconContainer, { backgroundColor: Colors.primary[50] }]}>
+          <View style={[styles.statIconContainer, { backgroundColor: 'rgba(139, 47, 63, 0.25)' }]}>
             <Ionicons name="today" size={24} color="#8B2F3F" />
           </View>
           <Text style={[styles.statValue, { color: '#8B2F3F' }]}>
@@ -83,8 +83,8 @@ export function PartnerOverview({
             style={styles.quickActionCard}
             onPress={onExportData}
           >
-            <View style={styles.quickActionIcon}>
-              <Ionicons name="document-text" size={24} color="#3B82F6" />
+            <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(139, 47, 63, 0.25)' }]}>
+              <Ionicons name="document-text" size={24} color="#8B2F3F" />
             </View>
             <Text style={styles.quickActionLabel}>Exporter</Text>
             <Text style={styles.quickActionSubtext}>Données</Text>
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: BorderRadius.full,
-    backgroundColor: '#DBEAFE',
+    backgroundColor: 'rgba(139, 47, 63, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.sm,
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: BorderRadius.full,
-    backgroundColor: Colors.primary[50],
+    backgroundColor: 'rgba(139, 47, 63, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Spacing.md,

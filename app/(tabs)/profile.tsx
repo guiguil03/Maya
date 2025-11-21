@@ -127,7 +127,7 @@ export default function ProfileScreen() {
 
           <ScrollView
             style={styles.content}
-            contentContainerStyle={{ paddingBottom: Spacing['2xl'] }}
+            contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
@@ -476,6 +476,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   } as ViewStyle,
   title: {
     fontSize: Typography.sizes['3xl'],
@@ -490,6 +491,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   } as ViewStyle,
+  scrollContent: {
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing['2xl'],
+  } as ViewStyle,
   profileCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: BorderRadius.xl,
@@ -498,17 +503,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.lg,
     marginBottom: Spacing.lg,
+    marginHorizontal: Spacing.sm,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.18)',
     ...Shadows.md,
+    maxWidth: '100%',
   } as ViewStyle,
   avatarBadge: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: Colors.primary[100],
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    ...Shadows.sm,
   } as ViewStyle,
   avatarInitials: {
     fontSize: Typography.sizes['2xl'],
@@ -549,9 +559,11 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.xl,
     padding: Spacing.lg,
     marginBottom: Spacing.lg,
+    marginHorizontal: Spacing.sm,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.18)',
     ...Shadows.sm,
+    maxWidth: '100%',
   } as ViewStyle,
   sectionHeader: {
     flexDirection: 'row',
@@ -560,9 +572,10 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   } as ViewStyle,
   sectionTitle: {
-    fontSize: Typography.sizes['2xl'],
+    fontSize: Typography.sizes.xl,
     fontWeight: '700',
     color: Colors.text.light,
+    marginBottom: Spacing.sm,
   } as TextStyle,
   ghostButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.12)',
@@ -610,12 +623,13 @@ const styles = StyleSheet.create({
   paymentItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
-    borderColor: Colors.primary[100],
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
+    padding: Spacing.md,
     marginTop: Spacing.sm,
+    ...Shadows.xs,
   } as ViewStyle,
   paymentTitle: {
     fontSize: Typography.sizes.lg,
@@ -670,11 +684,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.18)',
     paddingVertical: Spacing.sm,
+    marginHorizontal: Spacing.sm,
+    marginBottom: Spacing.lg,
     ...Shadows.sm,
   } as ViewStyle,
   logoutContainer: {
     paddingHorizontal: Spacing.lg,
     marginTop: Spacing.lg,
+    marginHorizontal: Spacing.sm,
   } as ViewStyle,
   logoutButton: {
     flexDirection: 'row',
@@ -698,7 +715,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.primary[50],
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
   } as ViewStyle,
   menuText: {
     flex: 1,
@@ -726,9 +743,9 @@ const styles = StyleSheet.create({
     padding: Spacing.xs,
   } as ViewStyle,
   avatarImage: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   } as ViewStyle,
   userInfoRow: {
     flexDirection: 'row',

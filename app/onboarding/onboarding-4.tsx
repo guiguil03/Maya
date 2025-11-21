@@ -32,7 +32,7 @@ export default function Onboarding4Screen() {
           }
           title="Rejoignez Maya"
           description="Des milliers de partenaires vous attendent pour maximiser vos économies"
-          gradientColors={Colors.gradients.info}
+          gradientColors={Colors.gradients.primary as any}
         />
         
         <View style={styles.paginationContainer}>

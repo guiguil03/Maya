@@ -32,7 +32,7 @@ export default function Onboarding3Screen() {
           }
           title="Offres exclusives"
           description="Accédez à des promotions spéciales réservées aux membres Maya"
-          gradientColors={Colors.gradients.warning}
+          gradientColors={Colors.gradients.primary as any}
         />
         
         <View style={styles.paginationContainer}>

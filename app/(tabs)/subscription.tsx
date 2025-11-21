@@ -3,6 +3,8 @@ import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/
 import { PaymentService } from '@/services/payment.service';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -20,6 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SubscriptionScreen() {
+  const router = useRouter();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [selectedPlan, setSelectedPlan] = useState<'solo' | 'duo' | 'family'>('duo');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -27,6 +30,7 @@ export default function SubscriptionScreen() {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [applePayAvailable, setApplePayAvailable] = useState(false);
   const [googlePayAvailable, setGooglePayAvailable] = useState(false);
+  const [checkoutSessionId, setCheckoutSessionId] = useState<string | null>(null);
 
   const handlePartnerMode = () => {
     console.log('Mode partenaire');
@@ -54,6 +58,33 @@ export default function SubscriptionScreen() {
     return names[selectedPlan];
   };
 
+  const getPlanCode = () => {
+    // Le planCode doit correspondre exactement à ce qui est dans la base de données
+    // La procédure stockée usp_SubscriptionPlan_GetStripePriceId cherche par PlanCode
+    // 
+    // IMPORTANT: Vérifiez dans votre base de données le format exact des codes de plans
+    // Les options possibles :
+    // - "Solo", "Duo", "Family" (avec majuscule)
+    // - "solo", "duo", "family" (tout en minuscule)
+    // - "Solo-Monthly", "Solo-Annual" (avec le cycle de facturation)
+    // - Autre format selon votre configuration
+    
+    const planCodeMap: Record<string, string> = {
+      solo: 'Solo',      // ⚠️ MODIFIEZ ICI selon votre base de données
+      duo: 'Duo',        // ⚠️ MODIFIEZ ICI selon votre base de données
+      family: 'Family',   // ⚠️ MODIFIEZ ICI selon votre base de données
+    };
+    
+    const baseCode = planCodeMap[selectedPlan] || selectedPlan;
+    
+    // Option 1: Retourner juste le code de base (si le planCode ne dépend pas du cycle)
+    return baseCode;
+    
+    // Option 2: Si votre backend attend le planCode avec le cycle (décommentez cette ligne)
+    // const cycle = billingCycle === 'monthly' ? 'Monthly' : 'Annual';
+    // return `${baseCode}-${cycle}`;
+  };
+
   // Vérifier la disponibilité des méthodes de paiement
   useEffect(() => {
     const checkPaymentMethods = async () => {
@@ -65,6 +96,67 @@ export default function SubscriptionScreen() {
     checkPaymentMethods();
   }, []);
 
+  // Écouter les deep links de retour depuis Stripe
+  useEffect(() => {
+    const handleDeepLink = async (url: string) => {
+      console.log('🔗 [Subscription] Deep link reçu:', url);
+      
+      // Vérifier si c'est un retour depuis Stripe
+      if (url.includes('subscription/success')) {
+        // Parser l'URL pour extraire le session_id (compatible React Native)
+        let sessionId = checkoutSessionId;
+        const sessionIdMatch = url.match(/[?&]session_id=([^&]+)/);
+        if (sessionIdMatch) {
+          sessionId = decodeURIComponent(sessionIdMatch[1]);
+        }
+        
+        if (sessionId) {
+          console.log('✅ [Subscription] Paiement réussi, session ID:', sessionId);
+          Alert.alert(
+            '✅ Paiement réussi',
+            'Votre abonnement a été activé avec succès. Le webhook va confirmer le paiement côté serveur.',
+            [
+              {
+                text: 'Parfait',
+                onPress: () => {
+                  setShowPaymentModal(false);
+                  setSelectedPaymentMethod(null);
+                  setCheckoutSessionId(null);
+                  // Optionnel : rafraîchir les infos utilisateur
+                  router.replace('/(tabs)/home');
+                },
+              },
+            ]
+          );
+        }
+      } else if (url.includes('subscription/cancel')) {
+        console.log('❌ [Subscription] Paiement annulé');
+        Alert.alert(
+          'Paiement annulé',
+          'Vous avez annulé le paiement. Vous pouvez réessayer à tout moment.',
+          [{ text: 'OK' }]
+        );
+        setCheckoutSessionId(null);
+      }
+    };
+
+    // Écouter les événements de deep linking
+    const subscription = Linking.addEventListener('url', (event) => {
+      handleDeepLink(event.url);
+    });
+
+    // Vérifier si l'app a été ouverte via un deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink(url);
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [checkoutSessionId, router]);
+
   const handlePayment = async () => {
     if (!selectedPaymentMethod) return;
 
@@ -72,11 +164,17 @@ export default function SubscriptionScreen() {
 
     try {
       // Créer une session de checkout via l'API
+      // Le planCode doit correspondre exactement à ce qui est dans la base de données
+      // La procédure stockée usp_SubscriptionPlan_GetStripePriceId cherche par PlanCode
       const planCode = getPlanCode();
-      const successUrl = 'm ';
-      const cancelUrl = 'maya://subscription/cancel';
+      
+      // Construire les URLs de redirection avec support du placeholder {CHECKOUT_SESSION_ID}
+      // Stripe remplacera automatiquement {CHECKOUT_SESSION_ID} par l'ID de session réel
+      const baseUrl = 'maya://subscription';
+      const successUrl = `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${baseUrl}/cancel`;
 
-      console.log('💳 Création de la session de checkout:', { 
+      console.log('💳 [Subscription] Création de la session de checkout:', { 
         planCode, 
         billingCycle,
         successUrl, 
@@ -90,36 +188,59 @@ export default function SubscriptionScreen() {
         billingCycle
       );
 
-      console.log('✅ Session de checkout créée:', checkoutSession);
+      console.log('✅ [Subscription] Session de checkout créée:', {
+        hasUrl: !!checkoutSession?.url,
+        hasSessionId: !!checkoutSession?.sessionId,
+        sessionId: checkoutSession?.sessionId,
+      });
 
-      // Si l'API retourne une URL, on peut ouvrir un navigateur web ou gérer la redirection
+      // Stocker le sessionId pour le deep link de retour
+      if (checkoutSession?.sessionId) {
+        setCheckoutSessionId(checkoutSession.sessionId);
+      }
+
+      // Si l'API retourne une URL Stripe, ouvrir dans un navigateur in-app
       if (checkoutSession?.url) {
-        // Pour React Native, on peut utiliser Linking pour ouvrir l'URL
-        const canOpen = await Linking.canOpenURL(checkoutSession.url);
+        console.log('🌐 [Subscription] Ouverture de Stripe Checkout dans le navigateur in-app');
         
-        if (canOpen) {
-          await Linking.openURL(checkoutSession.url);
-          Alert.alert(
-            '✅ Redirection',
-            'Vous allez être redirigé vers la page de paiement.',
-            [
-              {
-                text: 'OK',
-                onPress: () => {
-                  setShowPaymentModal(false);
-                  setSelectedPaymentMethod(null);
-                },
-              },
-            ]
-          );
-        } else {
-          throw new Error('Impossible d\'ouvrir l\'URL de paiement');
+        try {
+          // Utiliser expo-web-browser pour ouvrir dans un navigateur in-app
+          // Cela permet de rester dans l'app et de gérer les redirections
+          const result = await WebBrowser.openBrowserAsync(checkoutSession.url, {
+            // Options pour un meilleur contrôle
+            presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
+            controlsColor: '#8B2F3F', // Couleur de l'app
+            toolbarColor: '#8B2F3F',
+            enableBarCollapsing: false,
+          });
+
+          console.log('📱 [Subscription] Résultat du navigateur:', result.type);
+
+          // Si l'utilisateur ferme le navigateur sans compléter
+          if (result.type === 'cancel' || result.type === 'dismiss') {
+            console.log('⚠️ [Subscription] Navigateur fermé sans compléter le paiement');
+            // Ne pas afficher d'erreur, l'utilisateur peut réessayer
+            setShowPaymentModal(false);
+            setSelectedPaymentMethod(null);
+          }
+          // Note: Les redirections success/cancel sont gérées par le deep link listener
+        } catch (error) {
+          console.error('❌ [Subscription] Erreur lors de l\'ouverture du navigateur:', error);
+          
+          // Fallback: essayer avec Linking si WebBrowser échoue
+          const canOpen = await Linking.canOpenURL(checkoutSession.url);
+          if (canOpen) {
+            await Linking.openURL(checkoutSession.url);
+          } else {
+            throw new Error('Impossible d\'ouvrir la page de paiement');
+          }
         }
       } else if (checkoutSession?.sessionId) {
-        // Si on a un sessionId, le paiement est peut-être déjà traité
+        // Si on a seulement un sessionId (cas rare), informer l'utilisateur
+        console.warn('⚠️ [Subscription] Session créée mais pas d\'URL retournée');
         Alert.alert(
           '✅ Session créée',
-          `Session de paiement créée avec succès.\n\nSession ID: ${checkoutSession.sessionId}`,
+          `Session de paiement créée avec succès.\n\nSession ID: ${checkoutSession.sessionId}\n\nLe webhook va traiter le paiement côté serveur.`,
           [
             {
               text: 'Parfait',
@@ -131,7 +252,7 @@ export default function SubscriptionScreen() {
           ]
         );
       } else {
-        throw new Error('Réponse inattendue de l\'API');
+        throw new Error('Réponse inattendue de l\'API: ni URL ni sessionId retourné');
       }
     } catch (error) {
       console.error('Erreur lors du paiement:', error);
@@ -582,11 +703,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.base,
     color: Colors.text.secondary,
   } as TextStyle,
-  header: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.lg,
-  } as ViewStyle,
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -595,16 +711,6 @@ const styles = StyleSheet.create({
   titleContainer: {
     flex: 1,
   } as ViewStyle,
-  title: {
-    fontSize: Typography.sizes['2xl'],
-    fontWeight: 'bold',
-    color: Colors.text.light,
-    marginBottom: Spacing.xs,
-  } as TextStyle,
-  subtitle: {
-    fontSize: Typography.sizes.base,
-    color: 'rgba(255, 255, 255, 0.9)',
-  } as TextStyle,
   partnerModeButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -687,8 +793,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     ...Shadows.md,
-    borderWidth: 2,
-    borderColor: 'transparent',
   } as ViewStyle,
   planCardPopular: {
     borderColor: '#8B2F3F',
@@ -904,13 +1008,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.18)',
+    borderWidth: 2,
+    borderColor: 'transparent',
     borderRadius: BorderRadius.lg,
     padding: Spacing.md,
     marginBottom: Spacing.md,
-    borderWidth: 2,
-    borderColor: 'transparent',
     ...Shadows.sm,
   } as ViewStyle,
   paymentMethodCardSelected: {
