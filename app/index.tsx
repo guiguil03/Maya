@@ -17,12 +17,41 @@ export default function Index() {
   // Rediriger automatiquement si l'utilisateur est connecté
   useEffect(() => {
     if (!loading && user) {
-      router.replace('/(tabs)/home');
+      // Vérifier si l'utilisateur est un partenaire ou opérateur
+      const isPartnerOrOperator = user?.email?.toLowerCase().includes('partner') || 
+                                   user?.email?.toLowerCase().includes('partenaire') ||
+                                   user?.email?.toLowerCase().includes('operator') ||
+                                   user?.email?.toLowerCase().includes('opérateur') ||
+                                   (user as any)?.role === 'partner' ||
+                                   (user as any)?.role === 'operator' ||
+                                   (user as any)?.role === 'opérateur' ||
+                                   (user as any)?.isPartner === true ||
+                                   (user as any)?.isOperator === true;
+      
+      if (isPartnerOrOperator) {
+        router.replace('/(tabs)/partner-home');
+      } else {
+        router.replace('/(tabs)/home');
+      }
     }
   }, [user, loading]);
 
   // Si l'utilisateur est connecté, rediriger
   if (!loading && user) {
+    // Vérifier si l'utilisateur est un partenaire ou opérateur
+    const isPartnerOrOperator = user?.email?.toLowerCase().includes('partner') || 
+                                 user?.email?.toLowerCase().includes('partenaire') ||
+                                 user?.email?.toLowerCase().includes('operator') ||
+                                 user?.email?.toLowerCase().includes('opérateur') ||
+                                 (user as any)?.role === 'partner' ||
+                                 (user as any)?.role === 'operator' ||
+                                 (user as any)?.role === 'opérateur' ||
+                                 (user as any)?.isPartner === true ||
+                                 (user as any)?.isOperator === true;
+    
+    if (isPartnerOrOperator) {
+      return <Redirect href="/(tabs)/partner-home" />;
+    }
     return <Redirect href="/(tabs)/home" />;
   }
 

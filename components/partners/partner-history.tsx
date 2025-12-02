@@ -192,31 +192,69 @@ export function PartnerHistory({
           </View>
           {filteredTransactions.map((transaction, index) => {
             const transactionDate = transaction.createdAt || transaction.date || transaction.transactionDate;
+            const storeName = transaction.storeName || transaction.partnerName || 'Partenaire inconnu';
+            const clientName = transaction.clientName || transaction.customerName || 'Client';
+            const amountGross = transaction.amountGross || transaction.amount || 0;
+            const amountNet = transaction.amountNet || amountGross;
+            const discount = transaction.discountPercent || transaction.discount || 0;
+            const savings = transaction.discountAmount || 0;
+            const personsCount = transaction.personsCount || 0;
+
             return (
               <View key={transaction.id || transaction.transactionId || index} style={styles.historyCard}>
+                {/* Header avec client et date */}
                 <View style={styles.historyHeader}>
                   <View style={styles.historyIcon}>
-                    <Ionicons name="receipt" size={24} color={Colors.text.light} />
+                    <Ionicons name="person" size={24} color={Colors.text.light} />
                   </View>
                   <View style={styles.historyInfo}>
-                    <Text style={styles.historyCustomer}>
-                      {transaction.storeName || transaction.partnerName || 'Partenaire inconnu'}
-                    </Text>
+                    <Text style={styles.historyCustomer}>{clientName}</Text>
                     <Text style={styles.historyDate}>{formatDate(transactionDate)}</Text>
-                    {transaction.clientName && (
-                      <Text style={styles.historyDate}>Client: {transaction.clientName}</Text>
-                    )}
+                    <Text style={styles.historyStore}>
+                      <Ionicons name="storefront" size={12} color={Colors.text.secondary} /> {storeName}
+                    </Text>
                   </View>
                 </View>
-                <View style={styles.historyStatus}>
-                  <View style={styles.amountBadge}>
-                    <Text style={styles.amountText}>
-                      {transaction.amount ? `${transaction.amount.toFixed(2)}€` : 'N/A'}
-                    </Text>
-                    {transaction.discount && transaction.discount > 0 && (
-                      <Text style={styles.discountText}>
-                        -{transaction.discount}%
-                      </Text>
+
+                {/* Détails de la transaction */}
+                <View style={styles.transactionDetails}>
+                  {/* Montants */}
+                  <View style={styles.amountsRow}>
+                    <View style={styles.amountItem}>
+                      <Text style={styles.amountLabel}>Montant initial</Text>
+                      <Text style={styles.amountValue}>{amountGross.toFixed(2)}€</Text>
+                    </View>
+                    {savings > 0 && (
+                      <>
+                        <Ionicons name="arrow-forward" size={16} color={Colors.text.secondary} />
+                        <View style={styles.amountItem}>
+                          <Text style={styles.amountLabel}>Montant net</Text>
+                          <Text style={[styles.amountValue, styles.amountNetValue]}>
+                            {amountNet.toFixed(2)}€
+                          </Text>
+                        </View>
+                      </>
+                    )}
+                  </View>
+
+                  {/* Badges */}
+                  <View style={styles.badgesRow}>
+                    {savings > 0 && (
+                      <View style={styles.savingsBadge}>
+                        <Ionicons name="pricetag" size={12} color="#10B981" />
+                        <Text style={styles.savingsText}>Réduction : {savings.toFixed(2)}€</Text>
+                      </View>
+                    )}
+                    {discount > 0 && (
+                      <View style={styles.discountBadge}>
+                        <Text style={styles.discountBadgeText}>-{discount}%</Text>
+                      </View>
+                    )}
+                    {personsCount > 0 && (
+                      <View style={styles.personsBadge}>
+                        <Ionicons name="people" size={12} color="#8B2F3F" />
+                        <Text style={styles.personsText}>{personsCount} pers.</Text>
+                      </View>
                     )}
                   </View>
                 </View>
@@ -400,24 +438,86 @@ const styles = StyleSheet.create({
   historyDate: {
     fontSize: Typography.sizes.sm,
     color: Colors.text.secondary,
+    marginBottom: 2,
   } as TextStyle,
-  historyStatus: {
+  historyStore: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.text.secondary,
+    marginTop: 4,
+  } as TextStyle,
+  transactionDetails: {
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    marginTop: Spacing.sm,
+  } as ViewStyle,
+  amountsRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.sm,
+    gap: Spacing.xs,
   } as ViewStyle,
-  amountBadge: {
-    alignItems: 'flex-end',
-    gap: 4,
+  amountItem: {
+    flex: 1,
   } as ViewStyle,
-  amountText: {
-    fontSize: Typography.sizes.lg,
+  amountLabel: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.text.secondary,
+    marginBottom: 4,
+  } as TextStyle,
+  amountValue: {
+    fontSize: Typography.sizes.base,
     fontWeight: '700',
     color: Colors.text.light,
   } as TextStyle,
-  discountText: {
-    fontSize: Typography.sizes.sm,
+  amountNetValue: {
+    color: '#10B981',
+  } as TextStyle,
+  badgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: Spacing.xs,
+  } as ViewStyle,
+  savingsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
+  } as ViewStyle,
+  savingsText: {
+    fontSize: Typography.sizes.xs,
     fontWeight: '600',
-    color: Colors.status.success,
+    color: '#10B981',
+  } as TextStyle,
+  discountBadge: {
+    backgroundColor: '#8B2F3F',
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
+  } as ViewStyle,
+  discountBadgeText: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: '700',
+    color: 'white',
+  } as TextStyle,
+  personsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(139, 47, 63, 0.2)',
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
+  } as ViewStyle,
+  personsText: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: '600',
+    color: '#8B2F3F',
   } as TextStyle,
 });
 

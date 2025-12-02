@@ -9,11 +9,16 @@ export default function TabLayout() {
     return <Redirect href="/login" />;
   }
 
-  // Vérifier si l'utilisateur est un partenaire
+  // Vérifier si l'utilisateur est un partenaire ou un opérateur
   const isPartner = user?.email?.toLowerCase().includes('partner') || 
                     user?.email?.toLowerCase().includes('partenaire') ||
+                    user?.email?.toLowerCase().includes('operator') ||
+                    user?.email?.toLowerCase().includes('opérateur') ||
                     (user as any)?.role === 'partner' ||
-                    (user as any)?.isPartner === true;
+                    (user as any)?.role === 'operator' ||
+                    (user as any)?.role === 'opérateur' ||
+                    (user as any)?.isPartner === true ||
+                    (user as any)?.isOperator === true;
 
   return (
     <Tabs
@@ -94,12 +99,12 @@ export default function TabLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: 'Histoire',
+          title: 'Historique',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? "time" : "time-outline"} 
-              size={24} 
-              color={color} 
+            <Ionicons
+              name={focused ? "receipt" : "receipt-outline"}
+              size={24}
+              color={color}
             />
           ),
         }}

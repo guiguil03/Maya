@@ -34,17 +34,31 @@ export function QRScanner({ visible, onClose, onScan, mode = 'client' }: QRScann
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (scanned) return;
-    
+
     setScanned(true);
-    console.log('📱 QR Code scanné:', data);
-    console.log('🔍 Mode scanner:', mode);
-    
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('📷 [QR SCANNER] Code-barres scanné par la caméra');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('📥 [QR SCANNER] Données brutes du scan:', {
+      length: data.length,
+      preview: data.substring(0, 150) + (data.length > 150 ? '...' : ''),
+      fullData: data,
+      type: typeof data,
+      hasNewlines: data.includes('\n'),
+      hasColons: data.includes(':'),
+      hasTokenKeyword: data.includes('Token:'),
+    });
+    console.log('🔍 [QR SCANNER] Mode scanner:', mode);
+
     // Mode partenaire: accepter tous les QR codes (tokens clients)
     if (mode === 'partner') {
-      console.log('✅ [Partner Mode] QR Code accepté, validation via API...');
+      console.log('✅ [QR SCANNER - Partner Mode] QR Code accepté');
+      console.log('📤 [QR SCANNER - Partner Mode] Envoi des données au composant parent...');
       onScan(data);
+      console.log('✅ [QR SCANNER - Partner Mode] Callback onScan exécuté avec succès');
       // Ne pas fermer automatiquement, laisser la validation se faire
       setScanned(false); // Permettre de scanner à nouveau si nécessaire
+      console.log('═══════════════════════════════════════════════════════════');
       return;
     }
     

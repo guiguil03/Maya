@@ -55,6 +55,80 @@ export interface StoreSearchResponse<T = any> {
 
 export const StoresService = {
   /**
+   * Récupère les magasins liés à l'utilisateur connecté via la route /stores/me (auth)
+   */
+  getMyStores: async (): Promise<StoreSearchResponse> => {
+    console.log('🔍 [Stores Service] getMyStores appelé');
+    console.log('🌐 [Stores Service] Appel API: GET /api/stores/me');
+    console.log('🌐 [Stores Service] Base URL:', STORES_API_BASE_URL);
+
+    try {
+      const startTime = Date.now();
+      const response = await storesApiCall<any>('/stores/me');
+      const duration = Date.now() - startTime;
+
+      console.log('✅ [Stores Service] Réponse API /stores/me reçue', {
+        duration: duration + 'ms',
+        responseType: typeof response,
+        isArray: Array.isArray(response),
+        hasItems: !!response?.items,
+        hasData: !!response?.data,
+      });
+
+      let result: StoreSearchResponse;
+
+      if (Array.isArray(response)) {
+        result = {
+          items: response,
+          page: 1,
+          pageSize: response.length,
+          totalCount: response.length,
+        };
+      } else if (response?.items && Array.isArray(response.items)) {
+        result = {
+          items: response.items,
+          page: response.page ?? 1,
+          pageSize: response.pageSize ?? response.items.length,
+          totalCount: response.totalCount ?? response.total ?? response.count ?? response.items.length,
+        };
+      } else if (response?.data && Array.isArray(response.data)) {
+        result = {
+          items: response.data,
+          page: response.page ?? 1,
+          pageSize: response.pageSize ?? response.data.length,
+          totalCount: response.totalCount ?? response.total ?? response.count ?? response.data.length,
+        };
+      } else {
+        console.warn('⚠️ [Stores Service] Format de réponse inattendu pour /stores/me, retour d\'un tableau vide');
+        result = {
+          items: [],
+          page: 1,
+          pageSize: 0,
+          totalCount: 0,
+        };
+      }
+
+      console.log('✅ [Stores Service] Résultat final /stores/me:', {
+        itemsCount: result.items.length,
+        page: result.page,
+        pageSize: result.pageSize,
+        totalCount: result.totalCount,
+      });
+
+      return result;
+    } catch (error) {
+      console.error('❌ [Stores Service] Erreur lors de l\'appel /stores/me:', error);
+      if (error instanceof Error) {
+        console.error('❌ [Stores Service] Détails de l\'erreur /stores/me:', {
+          message: error.message,
+          name: error.name,
+        });
+      }
+      throw error;
+    }
+  },
+
+  /**
    * Recherche des magasins par localisation/filtres avec pagination (auth)
    */
   searchStores: async (searchParams: StoreSearchParams = {}): Promise<StoreSearchResponse> => {

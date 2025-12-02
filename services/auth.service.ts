@@ -1124,7 +1124,7 @@ export const AuthService = {
 
       
       const redirectUri = AuthSession.makeRedirectUri({
-        useProxy: true, // Utiliser le proxy Expo (URI stable et conforme, accessible à tous)
+        // useProxy est obsolète dans les versions récentes d'expo-auth-session
       });
 
      
@@ -1288,9 +1288,9 @@ export const AuthService = {
         return publicUser;
       } else if (result.type === 'error') {
         const errorDetails = 'errorCode' in result ? result.errorCode : 
-                            'error' in result ? result.error : 
-                            'message' in result ? result.message : 
-                            'Erreur inconnue';
+                            ('error' in result ? (result as any).error : 
+                            ('message' in result ? (result as any).message : 
+                            'Erreur inconnue'));
         
         console.error('❌ [Auth Service] Erreur lors de l\'authentification Google:', {
           error: errorDetails,

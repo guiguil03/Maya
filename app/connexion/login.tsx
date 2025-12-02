@@ -39,9 +39,25 @@ export default function LoginScreen() {
       return;
     }
     try {
-      await signIn({ email, password, role });
-      // Redirection vers la page home après connexion réussie
-      router.replace('/(tabs)/home');
+      const userInfo = await signIn({ email, password, role });
+      
+      // Vérifier si l'utilisateur est un partenaire ou opérateur pour rediriger directement
+      const isPartnerOrOperator = userInfo?.email?.toLowerCase().includes('partner') || 
+                                   userInfo?.email?.toLowerCase().includes('partenaire') ||
+                                   userInfo?.email?.toLowerCase().includes('operator') ||
+                                   userInfo?.email?.toLowerCase().includes('opérateur') ||
+                                   (userInfo as any)?.role === 'partner' ||
+                                   (userInfo as any)?.role === 'operator' ||
+                                   (userInfo as any)?.role === 'opérateur' ||
+                                   (userInfo as any)?.isPartner === true ||
+                                   (userInfo as any)?.isOperator === true;
+      
+      // Redirection vers la page appropriée après connexion réussie
+      if (isPartnerOrOperator) {
+        router.replace('/(tabs)/partner-home');
+      } else {
+        router.replace('/(tabs)/home');
+      }
     } catch (error) {
       console.error('Erreur lors de la connexion:', error);
       if (error instanceof Error) {
@@ -105,8 +121,25 @@ export default function LoginScreen() {
                   setGoogleLoading(true);
                   setErrorMessage('');
                   try {
-                    await signInWithGoogle();
-                    router.replace('/(tabs)/home');
+                    const userInfo = await signInWithGoogle();
+                    
+                    // Vérifier si l'utilisateur est un partenaire ou opérateur
+                    const isPartnerOrOperator = userInfo?.email?.toLowerCase().includes('partner') || 
+                                                 userInfo?.email?.toLowerCase().includes('partenaire') ||
+                                                 userInfo?.email?.toLowerCase().includes('operator') ||
+                                                 userInfo?.email?.toLowerCase().includes('opérateur') ||
+                                                 (userInfo as any)?.role === 'partner' ||
+                                                 (userInfo as any)?.role === 'operator' ||
+                                                 (userInfo as any)?.role === 'opérateur' ||
+                                                 (userInfo as any)?.isPartner === true ||
+                                                 (userInfo as any)?.isOperator === true;
+                    
+                    // Redirection vers la page appropriée
+                    if (isPartnerOrOperator) {
+                      router.replace('/(tabs)/partner-home');
+                    } else {
+                      router.replace('/(tabs)/home');
+                    }
                   } catch (error) {
                     console.error('Erreur lors de la connexion Google:', error);
                     if (error instanceof Error) {

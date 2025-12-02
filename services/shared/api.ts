@@ -37,12 +37,34 @@ export const apiCall = async <T>(
     }
   }
 
+  const startTime = Date.now();
   const response = await fetch(url, finalOptions);
+  const duration = Date.now() - startTime;
+
+  console.log('📥 [API Call] Réponse reçue:', {
+    status: response.status,
+    statusText: response.statusText,
+    duration: duration + 'ms',
+    ok: response.ok,
+    contentType: response.headers.get('content-type'),
+    headers: {
+      'content-type': response.headers.get('content-type'),
+      'content-length': response.headers.get('content-length'),
+    },
+  });
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => '');
-    const errorMessage = `HTTP ${response.status}: ${errorText}`;
-    
+
+    console.error('❌ [API Call] Erreur HTTP:', {
+      status: response.status,
+      statusText: response.statusText,
+      url,
+      method: finalOptions.method || 'GET',
+      errorText: errorText.substring(0, 500),
+      hasAuthHeader: !!(finalOptions.headers as Record<string, string>)?.Authorization,
+    });
+
     // Si erreur 401, logger plus d'informations pour le debug
     if (response.status === 401) {
       console.error('❌ [API] Erreur 401 - Non autorisé:', {
@@ -52,19 +74,33 @@ export const apiCall = async <T>(
         authHeaderPreview: (finalOptions.headers as Record<string, string>)?.Authorization?.substring(0, 30) + '...',
       });
     }
-    
+
+    const errorMessage = `HTTP ${response.status}: ${errorText}`;
     throw new Error(errorMessage);
   }
 
   if (response.status === 204) {
+    console.log('✅ [API Call] Réponse 204 No Content - retour undefined');
     return undefined as T;
   }
 
   const contentType = response.headers.get('content-type');
   if (contentType && contentType.includes('application/json')) {
-    return (await response.json()) as T;
+    const jsonData = await response.json();
+    console.log('✅ [API Call] Réponse JSON parsée:', {
+      type: typeof jsonData,
+      isArray: Array.isArray(jsonData),
+      keys: jsonData && typeof jsonData === 'object' ? Object.keys(jsonData) : undefined,
+      data: JSON.stringify(jsonData, null, 2),
+    });
+    return jsonData as T;
   }
 
-  return (await response.text()) as T;
+  const textData = await response.text();
+  console.log('✅ [API Call] Réponse texte:', {
+    length: textData.length,
+    preview: textData.substring(0, 200) + (textData.length > 200 ? '...' : ''),
+  });
+  return textData as T;
 };
 

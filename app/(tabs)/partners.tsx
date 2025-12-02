@@ -1048,17 +1048,24 @@ export default function PartnersScreen() {
                 <View style={styles.modalActionContainer}>
                   <TouchableOpacity 
                     style={styles.modalActionButton}
-                    activeOpacity={0.8}
+                    activeOpacity={0.9}
                   >
+                    <View style={styles.modalActionButtonInner}>
+                      <View style={styles.modalActionIconWrapper}>
+                        <Ionicons name="navigate" size={24} color={Colors.text.light} />
+                      </View>
+                      <Text style={styles.modalActionText}>Y aller</Text>
+                      <View style={styles.modalActionArrow}>
+                        <Ionicons name="arrow-forward" size={20} color={Colors.text.light} />
+                      </View>
+                    </View>
                     <LinearGradient
-                      colors={['#8B2F3F', '#6B1F2F']}
+                      colors={['rgba(139, 47, 63, 0.95)', 'rgba(107, 31, 47, 0.95)']}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
-                      style={styles.modalActionGradient}
-                    >
-                      <Ionicons name="navigate" size={22} color={Colors.text.light} />
-                      <Text style={styles.modalActionText}>Y aller</Text>
-                    </LinearGradient>
+                      style={StyleSheet.absoluteFill}
+                      pointerEvents="none"
+                    />
                   </TouchableOpacity>
                 </View>
               )}
@@ -1793,28 +1800,59 @@ const styles = StyleSheet.create({
   } as TextStyle,
   modalActionContainer: {
     padding: Spacing.lg,
-    paddingTop: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: 'rgba(26, 10, 14, 0.8)',
+    paddingTop: Spacing.lg,
+    borderTopWidth: 0,
+    backgroundColor: 'transparent',
   } as ViewStyle,
   modalActionButton: {
-    borderRadius: BorderRadius.xl,
+    borderRadius: BorderRadius['2xl'],
     overflow: 'hidden',
-    ...Shadows.lg,
+    position: 'relative',
+    borderWidth: 2,
+    borderColor: 'rgba(139, 47, 63, 0.5)',
+    shadowColor: '#8B2F3F',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 12,
   } as ViewStyle,
-  modalActionGradient: {
+  modalActionButtonInner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Spacing.lg,
+    paddingVertical: Spacing.xl,
     paddingHorizontal: Spacing.xl,
-    gap: Spacing.sm,
+    gap: Spacing.md,
+    position: 'relative',
+    zIndex: 1,
+  } as ViewStyle,
+  modalActionIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   } as ViewStyle,
   modalActionText: {
-    fontSize: Typography.sizes.lg,
-    fontWeight: '700',
+    fontSize: Typography.sizes.xl,
+    fontWeight: '800',
     color: Colors.text.light,
-    letterSpacing: 0.5,
+    letterSpacing: 1,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   } as TextStyle,
+  modalActionArrow: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  } as ViewStyle,
 });

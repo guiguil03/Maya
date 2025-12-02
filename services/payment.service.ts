@@ -334,5 +334,74 @@ export const PaymentService = {
       throw error;
     }
   },
+
+  /**
+   * Vérifier le statut d'une session de paiement Stripe
+   * GET /api/payments/checkout-session/{sessionId}
+   * 
+   * @param sessionId - ID de la session Stripe Checkout
+   * @returns Statut de la session avec les informations de paiement
+   */
+  checkPaymentSessionStatus: async (
+    sessionId: string
+  ): Promise<{
+    status: 'complete' | 'open' | 'expired' | 'processing' | 'error';
+    paymentStatus?: 'paid' | 'unpaid' | 'no_payment_required';
+    subscriptionId?: string;
+    customerEmail?: string;
+    message?: string;
+  }> => {
+    console.log('🔍 [Payments Service] Vérification du statut de la session:', sessionId);
+    
+    try {
+      const startTime = Date.now();
+      
+      const response = await paymentsApiCall<{
+        status: string;
+        paymentStatus?: string;
+        subscriptionId?: string;
+        customerEmail?: string;
+        message?: string;
+      }>(`/payments/checkout-session/${encodeURIComponent(sessionId)}`, {
+        method: 'GET',
+      });
+      
+      const duration = Date.now() - startTime;
+
+      console.log('✅ [Payments Service] Statut de session récupéré', {
+        duration: duration + 'ms',
+        status: response?.status,
+        paymentStatus: response?.paymentStatus,
+        hasSubscriptionId: !!response?.subscriptionId,
+      });
+
+      // Normaliser le statut
+      const normalizedStatus = (response?.status || 'error').toLowerCase() as 
+        'complete' | 'open' | 'expired' | 'processing' | 'error';
+
+      return {
+        status: normalizedStatus,
+        paymentStatus: response?.paymentStatus as 'paid' | 'unpaid' | 'no_payment_required' | undefined,
+        subscriptionId: response?.subscriptionId,
+        customerEmail: response?.customerEmail,
+        message: response?.message,
+      };
+    } catch (error) {
+      console.error('❌ [Payments Service] Erreur lors de la vérification du statut:', error);
+      
+      if (error instanceof Error) {
+        console.error('❌ [Payments Service] Détails de l\'erreur:', {
+          message: error.message,
+          name: error.name,
+        });
+      }
+      
+      // En cas d'erreur, retourner un statut d'erreur
+      return {
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Erreur lors de la vérification du statut',
+      };
+    }
+  },
 };
 

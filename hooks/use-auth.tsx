@@ -6,8 +6,8 @@ type AuthUser = PublicUser & { role?: string };
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
-  signIn: (params: LoginRequest) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signIn: (params: LoginRequest) => Promise<AuthUser>;
+  signInWithGoogle: () => Promise<AuthUser>;
   signUp: (params: RegisterRequest) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -57,7 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadUser();
   }, []);
 
-  const signIn = useCallback(async (loginData: LoginRequest) => {
+  const signIn = useCallback(async (loginData: LoginRequest): Promise<AuthUser> => {
     setLoading(true);
     try {
       if (!loginData.email || !loginData.password) {
@@ -71,15 +71,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Essayer de récupérer les infos complètes depuis l'API en arrière-plan
       // mais ne pas bloquer la connexion si ça échoue
+      let finalUserInfo = userInfo;
       try {
         const updatedUserInfo = await AuthService.getCurrentUserInfo();
         if (updatedUserInfo) {
           setUser(updatedUserInfo);
+          finalUserInfo = updatedUserInfo;
           console.log('🔄 Infos utilisateur mises à jour depuis l\'API');
         }
       } catch {
         console.log('⚠️ Impossible de récupérer les infos complètes, utilisation des données de base');
       }
+      
+      return finalUserInfo;
     } catch (error) {
       setUser(null);
       throw error;
@@ -88,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const signInWithGoogle = useCallback(async () => {
+  const signInWithGoogle = useCallback(async (): Promise<AuthUser> => {
     setLoading(true);
     try {
       const userInfo = await AuthService.signInWithGoogle();
@@ -96,15 +100,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('✅ Connexion Google réussie:', userInfo.email);
       
       // Essayer de récupérer les infos complètes depuis l'API en arrière-plan
+      let finalUserInfo = userInfo;
       try {
         const updatedUserInfo = await AuthService.getCurrentUserInfo();
         if (updatedUserInfo) {
           setUser(updatedUserInfo);
+          finalUserInfo = updatedUserInfo;
           console.log('🔄 Infos utilisateur mises à jour depuis l\'API');
         }
       } catch {
         console.log('⚠️ Impossible de récupérer les infos complètes, utilisation des données de base');
       }
+      
+      return finalUserInfo;
     } catch (error) {
       setUser(null);
       throw error;

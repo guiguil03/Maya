@@ -2,11 +2,13 @@ import { NavigationTransition } from '@/components/common/navigation-transition'
 import { PartnerBottomNav, PartnerTab } from '@/components/partners/partner-bottom-nav';
 import { PartnerHeader } from '@/components/partners/partner-header';
 import { PartnerHistory } from '@/components/partners/partner-history';
+import { PartnerMe } from '@/components/partners/partner-me';
 import { PartnerOverview } from '@/components/partners/partner-overview';
 import { PartnerStats } from '@/components/partners/partner-stats';
 import { PartnerStoreModal } from '@/components/partners/partner-store-modal';
-import { PartnerStores } from '@/components/partners/partner-stores';
+// import { PartnerStores } from '@/components/partners/partner-stores';
 import { PartnerSubscription } from '@/components/partners/partner-subscription';
+import { QrValidationModal } from '@/components/partners/qr-validation-modal';
 import { QRScanner } from '@/components/qr/qr-scanner';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
 import { useAuth } from '@/hooks/use-auth';
@@ -47,7 +49,17 @@ export default function PartnerHomeScreen() {
   const [filterPeriod, setFilterPeriod] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [validatingQR, setValidatingQR] = useState(false);
-  
+
+  // États pour le modal de validation QR
+  const [showQRValidationModal, setShowQRValidationModal] = useState(false);
+  const [qrValidationData, setQrValidationData] = useState<{
+    qrToken: string;
+    partnerId: string;
+    storeId: string;
+    operatorUserId: string;
+    storeName?: string;
+  } | null>(null);
+
   // États pour les clients
   const [clients, setClients] = useState<any[]>([]);
   const [clientsLoading, setClientsLoading] = useState(false);
@@ -138,40 +150,32 @@ export default function PartnerHomeScreen() {
         lastChars: qrToken.substring(Math.max(0, qrToken.length - 10)),
       });
       
-      // Récupérer les informations du partenaire et de l'opérateur
+      // Récupérer les informations de l'opérateur
       console.log('👤 [QR SCAN] Récupération des informations utilisateur...');
       let partnerId: string | undefined;
       let operatorUserId: string | undefined;
       let storeId: string | undefined;
-      
+
       try {
         const startTime = Date.now();
         const userInfo = await AuthService.getCurrentUserInfo();
         const duration = Date.now() - startTime;
-        
+
         console.log('✅ [QR SCAN] Informations utilisateur récupérées:', {
           duration: duration + 'ms',
           email: userInfo.email,
           id: userInfo.id,
-          hasPartnerId: !!(userInfo as any)?.partnerId,
-          hasId: !!userInfo.id,
+          role: (userInfo as any)?.role,
           userInfoKeys: Object.keys(userInfo),
         });
-        
-        // L'ID du partenaire peut être dans userInfo.partnerId ou userInfo.id
-        partnerId = (userInfo as any)?.partnerId || (userInfo as any)?.id;
+
         // L'ID de l'opérateur est l'ID de l'utilisateur connecté
         operatorUserId = userInfo.id;
-        
+
         console.log('✅ [QR SCAN] IDs extraits:', {
-          partnerId: partnerId ? partnerId.substring(0, 20) + '...' : 'undefined',
           operatorUserId: operatorUserId ? operatorUserId.substring(0, 20) + '...' : 'undefined',
-          partnerIdSource: (userInfo as any)?.partnerId ? 'partnerId' : 'id',
         });
-        
-        if (!partnerId) {
-          console.error('❌ [QR SCAN] partnerId manquant après extraction');
-        }
+
         if (!operatorUserId) {
           console.error('❌ [QR SCAN] operatorUserId manquant après extraction');
         }
@@ -183,12 +187,12 @@ export default function PartnerHomeScreen() {
         });
         throw new Error('Impossible de récupérer les informations du partenaire');
       }
-      
+
       // Si le partenaire a plusieurs stores, demander de sélectionner un store
       // Sinon, utiliser le premier store disponible
       console.log('🏪 [QR SCAN] Vérification des stores disponibles...');
       console.log('📊 [QR SCAN] Nombre de stores actuellement chargés:', stores.length);
-      
+
       if (stores.length === 0) {
         console.log('🔄 [QR SCAN] Aucun store chargé, chargement des stores...');
         const loadStartTime = Date.now();
@@ -199,7 +203,7 @@ export default function PartnerHomeScreen() {
           count: stores.length,
         });
       }
-      
+
       if (stores.length === 0) {
         console.error('❌ [QR SCAN] Aucun magasin disponible pour le partenaire');
         Alert.alert(
@@ -209,33 +213,58 @@ export default function PartnerHomeScreen() {
         );
         return;
       }
-      
+
       console.log('✅ [QR SCAN] Stores disponibles:', {
         count: stores.length,
         stores: stores.map((s: any) => ({
           id: s.id,
           name: s.name || s.partner?.name || 'N/A',
+          partnerId: s.partnerId || s.partner?.id,
         })),
       });
-      
-      // Si un seul store, l'utiliser automatiquement
-      if (stores.length === 1) {
-        storeId = stores[0].id;
-        console.log('✅ [QR SCAN] Store unique sélectionné automatiquement:', {
-          storeId: storeId ? storeId.substring(0, 20) + '...' : 'undefined',
-          storeName: stores[0].name || stores[0].partner?.name || 'N/A',
-        });
-      } else {
-        // Si plusieurs stores, demander à l'utilisateur de choisir
-        // Pour l'instant, on utilise le premier store
-        // TODO: Implémenter une sélection de store
-        storeId = stores[0].id;
-        console.log('⚠️ [QR SCAN] Plusieurs stores disponibles, utilisation du premier:', {
-          storeId: storeId ? storeId.substring(0, 20) + '...' : 'undefined',
-          storeName: stores[0].name || stores[0].partner?.name || 'N/A',
-          totalStores: stores.length,
-          note: 'TODO: Implémenter une sélection de store',
-        });
+
+      // Sélectionner le store et extraire son partnerId
+      let activeStore: any = null;
+
+      // Utiliser en priorité le magasin actif choisi par l'utilisateur
+      if (selectedStoreId) {
+        activeStore = stores.find((s: any) => s.id === selectedStoreId);
+        if (activeStore) {
+          storeId = activeStore.id as string;
+          partnerId = activeStore.partnerId || activeStore.partner?.id;
+          console.log('✅ [QR SCAN] Magasin actif sélectionné pour la validation:', {
+            storeId: storeId.substring(0, 20) + '...',
+            storeName: activeStore.name || activeStore.partner?.name || 'N/A',
+            partnerId: partnerId ? partnerId.substring(0, 20) + '...' : 'undefined',
+          });
+        } else {
+          console.warn('⚠️ [QR SCAN] Magasin actif introuvable dans la liste des stores, fallback automatique');
+        }
+      }
+
+      // Fallback si aucun magasin actif n'a été trouvé
+      if (!storeId || !partnerId) {
+        if (stores.length === 1) {
+          activeStore = stores[0];
+          storeId = activeStore.id as string;
+          partnerId = activeStore.partnerId || activeStore.partner?.id;
+          console.log('✅ [QR SCAN] Store unique sélectionné automatiquement:', {
+            storeId: storeId.substring(0, 20) + '...',
+            storeName: activeStore.name || activeStore.partner?.name || 'N/A',
+            partnerId: partnerId ? partnerId.substring(0, 20) + '...' : 'undefined',
+          });
+        } else {
+          // Si plusieurs stores et aucun actif défini, utiliser le premier
+          activeStore = stores[0];
+          storeId = activeStore.id as string;
+          partnerId = activeStore.partnerId || activeStore.partner?.id;
+          console.log('⚠️ [QR SCAN] Plusieurs stores disponibles, aucun actif défini, utilisation du premier:', {
+            storeId: storeId.substring(0, 20) + '...',
+            storeName: activeStore.name || activeStore.partner?.name || 'N/A',
+            partnerId: partnerId ? partnerId.substring(0, 20) + '...' : 'undefined',
+            totalStores: stores.length,
+          });
+        }
       }
       
       // Vérification finale des paramètres
@@ -255,65 +284,30 @@ export default function PartnerHomeScreen() {
       const finalPartnerId = partnerId!;
       const finalStoreId = storeId!;
       const finalOperatorUserId = operatorUserId!;
-      
+
       console.log('✅ [QR SCAN] Tous les paramètres sont présents');
-      console.log('📤 [QR SCAN] Paramètres de validation complets:', {
+      console.log('📤 [QR SCAN] Paramètres préparés pour le modal:', {
         qrToken: qrToken.substring(0, 30) + '...',
         qrTokenLength: qrToken.length,
         partnerId: finalPartnerId.substring(0, 20) + '...',
         storeId: finalStoreId.substring(0, 20) + '...',
         operatorUserId: finalOperatorUserId.substring(0, 20) + '...',
-        amountGross: 0,
-        personsCount: 0,
+        storeName: activeStore?.name || activeStore?.partner?.name || 'N/A',
       });
-      
-      // Valider le QR Code via l'API avec tous les paramètres requis
-      console.log('🌐 [QR SCAN] Appel API de validation...');
-      const validationStartTime = Date.now();
-      
-      const validationResult = await QrService.validateQrToken(
+
+      // Préparer les données pour le modal de validation
+      setQrValidationData({
         qrToken,
-        finalPartnerId,
-        finalStoreId,
-        finalOperatorUserId,
-        0, // amountGross - peut être modifié pour demander à l'utilisateur
-        0  // personsCount - peut être modifié pour demander à l'utilisateur
-      );
-      
-      const validationDuration = Date.now() - validationStartTime;
-      
-      console.log('✅ [QR SCAN] Validation réussie:', {
-        duration: validationDuration + 'ms',
-        hasResult: !!validationResult,
-        resultType: typeof validationResult,
-        resultKeys: validationResult ? Object.keys(validationResult) : [],
-        clientName: validationResult?.clientName || validationResult?.client?.firstName || 'N/A',
-        amount: validationResult?.amount || 'N/A',
-        fullResult: JSON.stringify(validationResult, null, 2),
+        partnerId: finalPartnerId,
+        storeId: finalStoreId,
+        operatorUserId: finalOperatorUserId,
+        storeName: activeStore?.name || activeStore?.partner?.name,
       });
-      
-      const selectedStore = stores.find((s: any) => s.id === finalStoreId);
-      console.log('📋 [QR SCAN] Informations pour l\'alerte:', {
-        clientName: validationResult?.clientName || validationResult?.client?.firstName || 'Client',
-        storeName: selectedStore?.name || selectedStore?.partner?.name || 'N/A',
-        amount: validationResult?.amount || 'N/A',
-      });
-      
-      Alert.alert(
-        '✅ QR Code validé',
-        `Visite enregistrée avec succès !\n\nClient: ${validationResult.clientName || validationResult.client?.firstName || 'Client'}\nMagasin: ${selectedStore?.name || selectedStore?.partner?.name || 'N/A'}\nMontant: ${validationResult.amount || 'N/A'}€`,
-        [
-          { 
-            text: 'OK', 
-            onPress: () => {
-              console.log('🔄 [QR SCAN] Rechargement des clients après validation...');
-              loadClients();
-            }
-          }
-        ]
-      );
-      
-      console.log('✅ [QR SCAN] Processus terminé avec succès');
+
+      // Ouvrir le modal de validation
+      setShowQRValidationModal(true);
+
+      console.log('✅ [QR SCAN] Modal de validation ouvert');
       console.log('═══════════════════════════════════════════════════════════');
     } catch (error) {
       console.error('═══════════════════════════════════════════════════════════');
@@ -335,6 +329,95 @@ export default function PartnerHomeScreen() {
     } finally {
       setValidatingQR(false);
       console.log('🏁 [QR SCAN] État de validation réinitialisé');
+    }
+  };
+
+  const handleValidateQR = async (amountGross: number, personsCount: number) => {
+    if (!qrValidationData) {
+      console.error('❌ [QR VALIDATION] Aucune donnée de validation disponible');
+      return;
+    }
+
+    setValidatingQR(true);
+
+    try {
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log('🌐 [QR VALIDATION] Début de la validation avec montant et personnes');
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log('📤 [QR VALIDATION] Paramètres de validation:', {
+        qrToken: qrValidationData.qrToken.substring(0, 30) + '...',
+        partnerId: qrValidationData.partnerId.substring(0, 20) + '...',
+        storeId: qrValidationData.storeId.substring(0, 20) + '...',
+        operatorUserId: qrValidationData.operatorUserId.substring(0, 20) + '...',
+        amountGross,
+        personsCount,
+      });
+
+      const validationStartTime = Date.now();
+
+      const validationResult = await QrService.validateQrToken(
+        qrValidationData.qrToken,
+        qrValidationData.partnerId,
+        qrValidationData.storeId,
+        qrValidationData.operatorUserId,
+        amountGross,
+        personsCount
+      );
+
+      const validationDuration = Date.now() - validationStartTime;
+
+      console.log('✅ [QR VALIDATION] Validation réussie:', {
+        duration: validationDuration + 'ms',
+        hasResult: !!validationResult,
+        resultType: typeof validationResult,
+        resultKeys: validationResult ? Object.keys(validationResult) : [],
+        clientName: validationResult?.clientName || validationResult?.client?.firstName || 'N/A',
+        amount: validationResult?.amount || 'N/A',
+        discount: validationResult?.discountAmount || 'N/A',
+        fullResult: JSON.stringify(validationResult, null, 2),
+      });
+
+      // Fermer le modal
+      setShowQRValidationModal(false);
+      setQrValidationData(null);
+
+      // Afficher le résultat
+      Alert.alert(
+        '✅ QR Code validé',
+        `Visite enregistrée avec succès !\n\nClient: ${validationResult.clientName || validationResult.client?.firstName || 'Client'}\nMagasin: ${qrValidationData.storeName || 'N/A'}\nMontant: ${amountGross.toFixed(2)}€\nPersonnes: ${personsCount}\nRéduction: ${validationResult?.discountAmount?.toFixed(2) || '0.00'}€`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              console.log('🔄 [QR VALIDATION] Rechargement des clients après validation...');
+              loadClients();
+            },
+          },
+        ]
+      );
+
+      console.log('✅ [QR VALIDATION] Processus terminé avec succès');
+      console.log('═══════════════════════════════════════════════════════════');
+    } catch (error) {
+      console.error('═══════════════════════════════════════════════════════════');
+      console.error('❌ [QR VALIDATION] Erreur lors de la validation');
+      console.error('═══════════════════════════════════════════════════════════');
+      console.error('❌ [QR VALIDATION] Détails de l\'erreur:', {
+        error: error instanceof Error ? error.message : String(error),
+        errorName: error instanceof Error ? error.name : 'Unknown',
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      Alert.alert(
+        '❌ Erreur',
+        error instanceof Error ? error.message : 'Impossible de valider le QR Code. Veuillez réessayer.',
+        [{ text: 'OK' }]
+      );
+
+      console.error('═══════════════════════════════════════════════════════════');
+    } finally {
+      setValidatingQR(false);
+      console.log('🏁 [QR VALIDATION] État de validation réinitialisé');
     }
   };
 
@@ -360,7 +443,7 @@ export default function PartnerHomeScreen() {
     loadClients();
   }, [loadClients]);
 
-  // Charger les transactions du partenaire
+  // Charger les transactions du partenaire/opérateur
   const loadPartnerTransactions = useCallback(async () => {
     if (!user?.id) {
       setTransactionsError('Utilisateur non connecté');
@@ -372,19 +455,10 @@ export default function PartnerHomeScreen() {
       setTransactionsLoading(true);
       setTransactionsError(null);
 
-      // Récupérer l'ID du partenaire depuis l'API si nécessaire
-      let partnerId = user.id;
-      try {
-        const userInfo = await AuthService.getCurrentUserInfo();
-        partnerId = userInfo.id || (userInfo as any)?.partnerId || user.id;
-      } catch (apiError) {
-        console.error('❌ [Partner History] Impossible de récupérer l\'ID depuis l\'API:', apiError);
-      }
-
       // Calculer les dates selon la période sélectionnée
       let startDate: string | undefined;
       const now = new Date();
-      
+
       if (filterPeriod === 'today') {
         startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
       } else if (filterPeriod === 'week') {
@@ -397,30 +471,71 @@ export default function PartnerHomeScreen() {
         startDate = monthAgo.toISOString();
       }
 
-      console.log('📊 [Partner History] Chargement des transactions pour le partenaire:', {
-        partnerId,
+      // Si un store spécifique est sélectionné, utiliser son partnerId
+      // Sinon, essayer de charger toutes les transactions via l'endpoint user
+      let partnerId: string | undefined;
+      let useUserEndpoint = false;
+
+      if (selectedStoreId) {
+        // Trouver le store sélectionné pour extraire son partnerId
+        const selectedStore = stores.find((s: any) => s.id === selectedStoreId);
+        if (selectedStore) {
+          partnerId = selectedStore.partnerId || selectedStore.partner?.id;
+          console.log('📊 [Partner History] Store sélectionné, utilisation de son partnerId:', {
+            storeId: selectedStoreId,
+            storeName: selectedStore.name,
+            partnerId: partnerId ? partnerId.substring(0, 20) + '...' : 'undefined',
+          });
+        }
+      }
+
+      // Si on n'a pas de partnerId spécifique (aucun store sélectionné ou pas trouvé)
+      // Pour un StoreOperator, on peut soit :
+      // 1. Charger les transactions de tous les stores (pas d'endpoint direct pour ça)
+      // 2. Charger les transactions via l'endpoint user
+      if (!partnerId) {
+        useUserEndpoint = true;
+        console.log('📊 [Partner History] Aucun store spécifique, utilisation de l\'endpoint user');
+      }
+
+      console.log('📊 [Partner History] Paramètres de chargement:', {
+        userId: user.id,
+        partnerId: partnerId ? partnerId.substring(0, 20) + '...' : 'N/A',
         filterPeriod,
         startDate,
         selectedStoreId,
+        useUserEndpoint,
       });
 
-      const response = await TransactionsService.getPartnerTransactions(partnerId, {
-        page: 1,
-        pageSize: 100,
-        storeId: selectedStoreId,
-        startDate: startDate,
-      });
+      let response;
+      if (useUserEndpoint) {
+        // Utiliser l'endpoint user pour récupérer toutes les transactions de l'opérateur
+        response = await TransactionsService.getUserTransactions(user.id, {
+          page: 1,
+          pageSize: 100,
+          startDate: startDate,
+        });
+      } else {
+        // Utiliser l'endpoint partner pour un store spécifique
+        response = await TransactionsService.getPartnerTransactions(partnerId!, {
+          page: 1,
+          pageSize: 100,
+          storeId: selectedStoreId,
+          startDate: startDate,
+        });
+      }
 
       console.log('✅ [Partner History] Transactions reçues:', {
         count: response.items?.length || 0,
         totalCount: response.totalCount,
+        endpoint: useUserEndpoint ? 'user' : 'partner',
       });
 
       setTransactions(response.items || []);
     } catch (err) {
-      console.error('Erreur lors du chargement des transactions:', err);
+      console.error('❌ [Partner History] Erreur lors du chargement des transactions:', err);
       let errorMessage = 'Erreur lors du chargement';
-      
+
       if (err instanceof Error) {
         if (err.message.includes('401')) {
           errorMessage = 'Session expirée. Veuillez vous reconnecter.';
@@ -430,13 +545,13 @@ export default function PartnerHomeScreen() {
           errorMessage = err.message;
         }
       }
-      
+
       setTransactionsError(errorMessage);
       setTransactions([]);
     } finally {
       setTransactionsLoading(false);
     }
-  }, [user, filterPeriod, selectedStoreId]);
+  }, [user, filterPeriod, selectedStoreId, stores]);
 
   useEffect(() => {
     if (selectedTab === 'history') {
@@ -444,117 +559,63 @@ export default function PartnerHomeScreen() {
     }
   }, [selectedTab, loadPartnerTransactions]);
 
-  // Charger les stores du partenaire connecté uniquement
+  // Charger les stores du partenaire/opérateur connecté
   const loadStores = useCallback(async () => {
-    console.log('🏪 [Partner Home] Chargement des stores du partenaire...');
+    console.log('🏪 [Partner Home] Chargement des stores depuis /auth/me...');
     setStoresLoading(true);
     setStoresError(null);
     try {
-      // Récupérer les informations du partenaire connecté
-      let partnerId: string | undefined;
-      
-      // Essayer d'abord avec user.id
-      if (user?.id) {
-        partnerId = user.id;
-        console.log('✅ [Partner Home] PartnerId depuis user.id:', partnerId);
-      }
-      
-      // Si pas trouvé, essayer avec getCurrentUserInfo
-      if (!partnerId) {
-        try {
-          const userInfo = await AuthService.getCurrentUserInfo();
-          console.log('👤 [Partner Home] Informations utilisateur:', {
-            email: userInfo.email,
-            id: userInfo.id,
-            hasPartnerId: !!(userInfo as any)?.partnerId,
-            allKeys: Object.keys(userInfo),
-          });
-          
-          // L'ID du partenaire peut être dans userInfo.partnerId ou userInfo.id
-          partnerId = (userInfo as any)?.partnerId || userInfo.id;
-          
-          if (partnerId) {
-            console.log('✅ [Partner Home] PartnerId trouvé depuis getCurrentUserInfo:', partnerId);
-          }
-        } catch (error) {
-          console.warn('⚠️ [Partner Home] Impossible de récupérer les infos utilisateur:', error);
-        }
-      }
-      
-      if (!partnerId) {
-        console.error('❌ [Partner Home] Aucun partnerId trouvé');
-        setStoresError('Impossible d\'identifier le partenaire');
+      // 1) Récupérer les infos complètes de l'utilisateur (partner / operator)
+      const userInfo = await AuthService.getCurrentUserInfo();
+
+      console.log('👤 [Partner Home] Données utilisateur complètes:', {
+        id: userInfo.id,
+        email: userInfo.email,
+        firstName: userInfo.firstName,
+        lastName: userInfo.lastName,
+        keys: Object.keys(userInfo),
+      });
+
+      // 2) Extraire les stores directement depuis la réponse /auth/me
+      // Les stores peuvent être à différents endroits selon le rôle
+      const userStores =
+        (userInfo as any).stores ||
+        (userInfo as any).partnerStores ||
+        (userInfo as any).operatorStores ||
+        (userInfo as any).myStores ||
+        (userInfo as any).partnerData?.operatorStores ||  // Pour les StoreOperator
+        (userInfo as any).partnerData?.stores ||
+        [];
+
+      console.log('🏪 [Partner Home] Stores extraits depuis /auth/me:', {
+        count: Array.isArray(userStores) ? userStores.length : 0,
+        type: typeof userStores,
+        isArray: Array.isArray(userStores),
+      });
+
+      if (!Array.isArray(userStores) || userStores.length === 0) {
+        console.warn(
+          '⚠️ [Partner Home] Aucun store trouvé dans la réponse /auth/me. Vérifier que l’API renvoie bien un tableau de magasins (stores, partnerStores, operatorStores, myStores, ...).'
+        );
         setStores([]);
+        setStoresError('Aucun magasin trouvé pour votre compte');
         return;
       }
 
-      console.log('🔍 [Partner Home] Recherche des stores pour le partenaire:', partnerId);
+      // 3) Utiliser directement ces stores (ce sont déjà ceux du partner/operator)
+      setStoresError(null);
+      setStores(userStores);
 
-      // Récupérer tous les stores (l'API devrait filtrer automatiquement par partenaire si authentifié)
-      const response = await StoresService.searchStores({
-        page: 1,
-        pageSize: 100,
-      });
-      
-      console.log('✅ [Partner Home] Stores récupérés (avant filtre):', {
-        total: response.items?.length || 0,
-        firstStore: response.items?.[0] ? {
-          id: response.items[0].id,
-          name: response.items[0].name,
-          partnerId: response.items[0].partnerId || response.items[0].partner?.id,
-        } : null,
-      });
-      
-      // Filtrer les stores pour ne garder que ceux du partenaire connecté
-      let filteredStores = (response.items || []).filter((store: any) => {
-        // Essayer plusieurs chemins pour trouver le partnerId du store
-        const storePartnerId = store.partnerId 
-          || store.partner?.id 
-          || (store.partner && typeof store.partner === 'string' ? store.partner : null)
-          || (store.partnerData?.id)
-          || null;
-        
-        // Comparer les IDs (en tenant compte des formats string/UUID)
-        const matches = storePartnerId 
-          && (storePartnerId === partnerId 
-              || storePartnerId.toString() === partnerId.toString()
-              || storePartnerId.toString().toLowerCase() === partnerId.toString().toLowerCase());
-        
-        if (!matches && storePartnerId) {
-          console.log('🚫 [Partner Home] Store filtré (ne correspond pas au partenaire):', {
-            storeId: store.id,
-            storeName: store.name || store.partner?.name,
-            storePartnerId: storePartnerId.toString().substring(0, 20) + '...',
-            currentPartnerId: partnerId.toString().substring(0, 20) + '...',
-          });
-        }
-        
-        return matches;
-      });
-      
-      console.log('✅ [Partner Home] Stores filtrés (après filtre):', {
-        count: filteredStores.length,
-        stores: filteredStores.map((s: any) => ({
+      console.log('✅ [Partner Home] Stores du partenaire chargés depuis /auth/me:', {
+        count: userStores.length,
+        preview: userStores.slice(0, 3).map((s: any) => ({
           id: s.id,
           name: s.name || s.partner?.name,
         })),
       });
-      
-      if (filteredStores.length === 0) {
-        console.warn('⚠️ [Partner Home] Aucun store trouvé pour ce partenaire');
-        setStoresError('Aucun magasin trouvé pour votre compte');
-      } else {
-        setStoresError(null);
-      }
-      
-      setStores(filteredStores);
     } catch (error) {
       console.error('❌ [Partner Home] Erreur lors du chargement des stores:', error);
       if (error instanceof Error) {
-        console.error('❌ [Partner Home] Détails de l\'erreur:', {
-          message: error.message,
-          name: error.name,
-        });
         setStoresError(`Erreur: ${error.message}`);
       } else {
         setStoresError('Impossible de charger les stores');
@@ -563,16 +624,9 @@ export default function PartnerHomeScreen() {
     } finally {
       setStoresLoading(false);
     }
-  }, [user]);
+  }, []);
 
-  // Charger les stores au démarrage et quand on change d'onglet vers stores
-  useEffect(() => {
-    if (selectedTab === 'stores') {
-      loadStores();
-    }
-  }, [selectedTab, loadStores]);
-
-  // Charger les stores au démarrage pour les avoir disponibles pour le scanner QR
+  // Charger les stores au démarrage et quand l'onglet Me est affiché
   useEffect(() => {
     loadStores();
   }, [loadStores]);
@@ -684,7 +738,7 @@ export default function PartnerHomeScreen() {
               stores={stores}
               transactions={transactions}
               transactionsLoading={transactionsLoading}
-              transactionsError={transactionsError}
+              transactionsError={transactionsError} 
               onSearchChange={setSearchQuery}
               onFilterPeriodChange={setFilterPeriod}
               onStoreFilterChange={setSelectedStoreId}
@@ -696,8 +750,9 @@ export default function PartnerHomeScreen() {
             <PartnerSubscription subscriptions={mockSubscriptions} />
           )}
 
-          {selectedTab === 'stores' && (
-            <PartnerStores
+          {selectedTab === ('me' as PartnerTab) && (
+            <PartnerMe
+              user={user}
               storeSearchQuery={storeSearchQuery}
               stores={stores}
               storesLoading={storesLoading}
@@ -730,6 +785,24 @@ export default function PartnerHomeScreen() {
           onScan={handleQRScanned}
           mode="partner"
         />
+
+        {/* Modal de validation QR avec montant et personnes */}
+        {qrValidationData && (
+          <QrValidationModal
+            visible={showQRValidationModal}
+            onClose={() => {
+              setShowQRValidationModal(false);
+              setQrValidationData(null);
+            }}
+            onValidate={handleValidateQR}
+            partnerId={qrValidationData.partnerId}
+            storeId={qrValidationData.storeId}
+            operatorUserId={qrValidationData.operatorUserId}
+            qrToken={qrValidationData.qrToken}
+            storeName={qrValidationData.storeName}
+            isValidating={validatingQR}
+          />
+        )}
         </LinearGradient>
       </NavigationTransition>
     );

@@ -1,7 +1,9 @@
 import { NavigationTransition } from '@/components/common/navigation-transition';
+import { UserTransactionsHistory } from '@/components/home/user-transactions-history';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
 import { useAuth } from '@/hooks/use-auth';
 import { QrService, QrTokenData } from '@/services/qr.service';
+import { TransactionsService } from '@/services/transactions.service';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -30,13 +32,23 @@ export default function HomeScreen() {
   const [qrError, setQrError] = useState<string | null>(null);
   const [qrCodeResponse, setQrCodeResponse] = useState<any | null>(null);
 
-  // Vérifier si l'utilisateur est un partenaire
+  // États pour les transactions
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [transactionsError, setTransactionsError] = useState<string | null>(null);
+
+  // Vérifier si l'utilisateur est un partenaire ou un opérateur
   useEffect(() => {
-    // Détecter si l'email contient "partner" ou si l'utilisateur a un rôle partenaire
+    // Détecter si l'email contient "partner", "operator" ou si l'utilisateur a un rôle partenaire/opérateur
     const isPartner = user?.email?.toLowerCase().includes('partner') || 
                       user?.email?.toLowerCase().includes('partenaire') ||
+                      user?.email?.toLowerCase().includes('operator') ||
+                      user?.email?.toLowerCase().includes('opérateur') ||
                       (user as any)?.role === 'partner' ||
-                      (user as any)?.isPartner === true;
+                      (user as any)?.role === 'operator' ||
+                      (user as any)?.role === 'opérateur' ||
+                      (user as any)?.isPartner === true ||
+                      (user as any)?.isOperator === true;
     
     if (isPartner) {
       // Rediriger vers l'interface partenaire
@@ -98,9 +110,93 @@ export default function HomeScreen() {
     }
   }, [loadQrToken, user]);
 
+  // Rafraîchir automatiquement le QR code toutes les 5 minutes
+  useEffect(() => {
+    if (!qrData || user?.email?.toLowerCase().includes('partner')) {
+      return;
+    }
+
+    const expiryTime = new Date(qrData.expiresAt).getTime();
+    const now = Date.now();
+    const timeUntilExpiry = expiryTime - now;
+
+    // Si le token expire dans moins d'1 minute, le rafraîchir immédiatement
+    if (timeUntilExpiry < 60 * 1000) {
+      console.log('🔄 [Home] Token expirant bientôt, rafraîchissement immédiat...');
+      loadQrToken(true);
+      return;
+    }
+
+    // Calculer le temps jusqu'au rafraîchissement (4 minutes avant expiration)
+    const timeUntilRefresh = timeUntilExpiry - (60 * 1000); // 1 minute avant expiration
+
+    console.log('⏰ [Home] Rafraîchissement automatique programmé dans', Math.round(timeUntilRefresh / 1000), 'secondes');
+
+    const refreshTimer = setTimeout(() => {
+      console.log('🔄 [Home] Rafraîchissement automatique du QR code...');
+      loadQrToken(true);
+    }, timeUntilRefresh);
+
+    // Nettoyer le timer si le composant est démonté ou si le QR data change
+    return () => {
+      clearTimeout(refreshTimer);
+    };
+  }, [qrData, loadQrToken, user]);
+
   const handleReloadQR = useCallback(() => {
     loadQrToken(true);
   }, [loadQrToken]);
+
+  // Charger les transactions de l'utilisateur
+  const loadUserTransactions = useCallback(async () => {
+    if (!user?.id) {
+      return;
+    }
+
+    try {
+      setTransactionsLoading(true);
+      setTransactionsError(null);
+
+      console.log('📊 [Home] Chargement des transactions pour l\'utilisateur:', user.id);
+
+      const response = await TransactionsService.getUserTransactions(user.id, {
+        page: 1,
+        pageSize: 10, // Limiter à 10 dernières transactions
+      });
+
+      console.log('✅ [Home] Transactions reçues:', {
+        count: response.items?.length || 0,
+        totalCount: response.totalCount,
+      });
+
+      setTransactions(response.items || []);
+    } catch (err) {
+      console.error('❌ [Home] Erreur lors du chargement des transactions:', err);
+      let errorMessage = 'Impossible de charger votre historique';
+
+      if (err instanceof Error) {
+        if (err.message.includes('401')) {
+          errorMessage = 'Session expirée. Veuillez vous reconnecter.';
+        } else if (err.message.includes('403')) {
+          errorMessage = 'Accès refusé.';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+
+      setTransactionsError(errorMessage);
+      setTransactions([]);
+    } finally {
+      setTransactionsLoading(false);
+    }
+  }, [user]);
+
+  // Charger les transactions au démarrage
+  useEffect(() => {
+    if (user && !user.email?.toLowerCase().includes('partner') && !user.email?.toLowerCase().includes('operator')) {
+      loadUserTransactions();
+    }
+  }, [loadUserTransactions, user]);
 
   // Générer et partager le QR Code en PDF
   const handleShareQR = useCallback(async () => {
@@ -355,7 +451,7 @@ export default function HomeScreen() {
                     <View style={styles.welcomeContainer}>
                       <Text style={styles.welcomeText}>Bonjour,</Text>
                       <View style={styles.nameBadge}>
-                        <Ionicons name="sparkles" size={16} color="#8B2F3F" style={styles.sparkleIcon} />
+                        <Ionicons name="sparkles" size={16} color="#8B2F3F" />
                         <Text style={styles.welcomeName}>
                           {user?.firstName || 'Client'} {user?.lastName || ''}
                         </Text>
@@ -370,13 +466,15 @@ export default function HomeScreen() {
             {/* Statistiques en haut */}
             <View style={styles.statsContainer}>
               <View style={[styles.statCard, styles.savingsCard]}>
-                <Text style={styles.statValue}>47,80 €</Text>
+                <Text style={styles.statValue}>
+                  {transactions.reduce((sum, t) => sum + (t.discountAmount || 0), 0).toFixed(2)} €
+                </Text>
                 <Text style={styles.statLabel}>ÉCONOMIES TOTALES</Text>
               </View>
 
               <View style={[styles.statCard, styles.visitsCard]}>
-                <Text style={styles.statValue}>12</Text>
-                <Text style={styles.statLabel}>PARTENAIRES VISITÉS</Text>
+                <Text style={styles.statValue}>{transactions.length}</Text>
+                <Text style={styles.statLabel}>VISITES EFFECTUÉES</Text>
               </View>
             </View>
 
@@ -566,9 +664,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.xs,
   } as ViewStyle,
-  sparkleIcon: {
-    marginRight: 4,
-  } as ViewStyle,
   welcomeName: {
     fontSize: Typography.sizes['3xl'],
     fontWeight: Typography.weights.bold as any,
@@ -599,6 +694,15 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.sm,
     fontWeight: Typography.weights.semibold as any,
   } as TextStyle,
+  quickActionIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.full,
+    backgroundColor: 'rgba(139, 47, 63, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  } as ViewStyle,
   qrCard: {
     backgroundColor: Colors.background.cardDark,
     borderRadius: BorderRadius['2xl'],
@@ -684,6 +788,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.md,
   } as ViewStyle,
+  qrExpiryContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: Spacing.sm,
+  } as ViewStyle,
+  qrExpiryText: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.text.secondary,
+  } as TextStyle,
   qrCodeContainer: {
     backgroundColor: 'white',
     borderRadius: BorderRadius['2xl'],

@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { StyleSheet, Text, TextStyle, TouchableOpacity, View, ViewStyle } from 'react-native';
 
-export type PartnerTab = 'overview' | 'history' | 'subscription' | 'stats' | 'stores';
+export type PartnerTab = 'overview' | 'history' | 'subscription' | 'stats' | 'me';
 
 interface PartnerBottomNavProps {
   selectedTab: PartnerTab;
@@ -17,7 +17,7 @@ export function PartnerBottomNav({ selectedTab, onTabChange }: PartnerBottomNavP
     { key: 'history', label: 'Historique', icon: { active: 'time', inactive: 'time-outline' } },
     { key: 'stats', label: 'Statistiques', icon: { active: 'stats-chart', inactive: 'stats-chart-outline' } },
     { key: 'subscription', label: 'Abonnement', icon: { active: 'card', inactive: 'card-outline' } },
-    { key: 'stores', label: 'Magasins', icon: { active: 'storefront', inactive: 'storefront-outline' } },
+    { key: 'me', label: 'Me', icon: { active: 'person', inactive: 'person-outline' } },
   ];
 
   return (
