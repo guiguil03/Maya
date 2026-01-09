@@ -119,7 +119,7 @@ const normalizeBaseUrl = (raw?: string | null) => {
   return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
 };
 
-const DEFAULT_DEV_API_BASE = 'https://3262206c5ce6.ngrok-free.appr/api/v1';
+const DEFAULT_DEV_API_BASE = 'https://3262206c5ce6.ngrok-free.app/api/v1';
 const ENV_API_BASE = normalizeBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL);
 
 export const API_BASE_URL =
