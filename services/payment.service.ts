@@ -403,5 +403,70 @@ export const PaymentService = {
       };
     }
   },
+
+  /**
+   * Traiter un webhook de paiement après confirmation
+   * POST /api/payments/webhook
+   * 
+   * Cette méthode est appelée UNIQUEMENT après que le paiement soit confirmé et validé.
+   * Elle déclenche la mise à jour de l'abonnement dans la base de données.
+   * 
+   * @param webhookData - Données du webhook incluant sessionId, status, etc.
+   * @returns Résultat du traitement du webhook
+   */
+  processWebhook: async (webhookData: {
+    sessionId: string;
+    status: string;
+    paymentStatus?: string;
+    subscriptionId?: string;
+  }): Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }> => {
+    console.log('🔔 [Payments Service] processWebhook appelé après paiement confirmé');
+    console.log('📋 [Payments Service] Données du webhook:', webhookData);
+
+    try {
+      const startTime = Date.now();
+      
+      const response = await paymentsApiCall<{
+        success: boolean;
+        message?: string;
+        error?: string;
+      }>('/payments/webhook', {
+        method: 'POST',
+        body: JSON.stringify(webhookData),
+      });
+      
+      const duration = Date.now() - startTime;
+
+      console.log('✅ [Payments Service] Webhook traité avec succès', {
+        duration: duration + 'ms',
+        success: response?.success,
+        message: response?.message,
+      });
+
+      return {
+        success: response?.success ?? false,
+        message: response?.message,
+        error: response?.error,
+      };
+    } catch (error) {
+      console.error('❌ [Payments Service] Erreur lors du traitement du webhook:', error);
+      
+      if (error instanceof Error) {
+        console.error('❌ [Payments Service] Détails de l\'erreur:', {
+          message: error.message,
+          name: error.name,
+        });
+      }
+      
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erreur lors du traitement du webhook',
+      };
+    }
+  },
 };
 

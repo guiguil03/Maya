@@ -9,6 +9,13 @@ interface PartnerOverviewProps {
   scans: any[];
   scansLoading: boolean;
   scansError: string | null;
+  scanCounts?: {
+    today: number;
+    week: number;
+    month: number;
+    total: number;
+  };
+  scanCountsLoading?: boolean;
   clients: any[];
   clientsLoading: boolean;
   clientsError: string | null;
@@ -24,6 +31,8 @@ export function PartnerOverview({
   scans,
   scansLoading,
   scansError,
+  scanCounts,
+  scanCountsLoading,
   clients,
   clientsLoading,
   clientsError,
@@ -32,7 +41,9 @@ export function PartnerOverview({
   onScanQR,
   validatingQR = false,
 }: PartnerOverviewProps) {
-  const totalScans = scans.length;
+  const totalScans = scanCounts?.total || scans.length;
+  const todayScans = scanCounts?.today || 0;
+  
   return (
     <>
       {/* Statistiques */}
@@ -50,10 +61,66 @@ export function PartnerOverview({
           <View style={[styles.statIconContainer, { backgroundColor: '#FEF3C7' }]}>
             <Ionicons name="scan" size={24} color={Colors.accent.orange} />
           </View>
-          <Text style={[styles.statValue, { color: Colors.accent.orange }]}>{totalScans}</Text>
-          <Text style={styles.statLabel}>Scans total</Text>
+          {scanCountsLoading ? (
+            <ActivityIndicator size="small" color={Colors.accent.orange} style={{ marginVertical: 8 }} />
+          ) : (
+            <>
+              <Text style={[styles.statValue, { color: Colors.accent.orange }]}>
+                {totalScans.toLocaleString('fr-FR')}
+              </Text>
+              <Text style={styles.statLabel}>Scans total</Text>
+              {todayScans > 0 && (
+                <Text style={styles.statSubLabel}>+{todayScans} aujourd&apos;hui</Text>
+              )}
+            </>
+          )}
         </View>
       </View>
+
+      {/* Compteurs détaillés de scans */}
+      {scanCounts && (
+        <View style={styles.scanCountsSection}>
+          <Text style={styles.sectionTitle}>Statistiques des scans</Text>
+          <View style={styles.scanCountsGrid}>
+            <View style={styles.scanCountCard}>
+              <View style={[styles.scanCountIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                <Ionicons name="today-outline" size={20} color={Colors.status.success} />
+              </View>
+              <Text style={styles.scanCountValue}>
+                {scanCountsLoading ? '-' : scanCounts.today.toLocaleString('fr-FR')}
+              </Text>
+              <Text style={styles.scanCountLabel}>Aujourd&apos;hui</Text>
+            </View>
+            <View style={styles.scanCountCard}>
+              <View style={[styles.scanCountIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                <Ionicons name="calendar-outline" size={20} color={Colors.accent.blue} />
+              </View>
+              <Text style={styles.scanCountValue}>
+                {scanCountsLoading ? '-' : scanCounts.week.toLocaleString('fr-FR')}
+              </Text>
+              <Text style={styles.scanCountLabel}>7 jours</Text>
+            </View>
+            <View style={styles.scanCountCard}>
+              <View style={[styles.scanCountIcon, { backgroundColor: 'rgba(139, 47, 63, 0.15)' }]}>
+                <Ionicons name="calendar" size={20} color="#8B2F3F" />
+              </View>
+              <Text style={styles.scanCountValue}>
+                {scanCountsLoading ? '-' : scanCounts.month.toLocaleString('fr-FR')}
+              </Text>
+              <Text style={styles.scanCountLabel}>30 jours</Text>
+            </View>
+            <View style={styles.scanCountCard}>
+              <View style={[styles.scanCountIcon, { backgroundColor: 'rgba(251, 191, 36, 0.15)' }]}>
+                <Ionicons name="stats-chart" size={20} color={Colors.accent.gold} />
+              </View>
+              <Text style={styles.scanCountValue}>
+                {scanCountsLoading ? '-' : scanCounts.total.toLocaleString('fr-FR')}
+              </Text>
+              <Text style={styles.scanCountLabel}>Total</Text>
+            </View>
+          </View>
+        </View>
+      )}
 
 
       {/* Actions rapides */}
@@ -186,6 +253,50 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     fontWeight: Typography.weights.medium as any,
     letterSpacing: 0.5,
+  } as TextStyle,
+  statSubLabel: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.status.success,
+    fontWeight: Typography.weights.semibold as any,
+    marginTop: 2,
+  } as TextStyle,
+  scanCountsSection: {
+    marginBottom: Spacing.lg,
+  } as ViewStyle,
+  scanCountsGrid: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    flexWrap: 'wrap',
+  } as ViewStyle,
+  scanCountCard: {
+    flex: 1,
+    minWidth: '48%',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    alignItems: 'center',
+    ...Shadows.sm,
+  } as ViewStyle,
+  scanCountIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  } as ViewStyle,
+  scanCountValue: {
+    fontSize: Typography.sizes['2xl'],
+    fontWeight: Typography.weights.bold as any,
+    color: Colors.text.light,
+    marginBottom: 2,
+  } as TextStyle,
+  scanCountLabel: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.text.secondary,
+    fontWeight: Typography.weights.medium as any,
   } as TextStyle,
   quickActionsSection: {
     marginBottom: Spacing.lg,
