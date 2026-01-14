@@ -185,7 +185,7 @@ jobs:
           bash scripts/fix-ios-nullability.sh
 
       - name: 🔧 Disable Swift 6 strict concurrency checking
-        run: |
+        run:
           # Find the Xcode project file
           PROJECT_FILE=$(find ios -name "project.pbxproj" -type f | head -n 1)
           if [ -n "$PROJECT_FILE" ]; then
