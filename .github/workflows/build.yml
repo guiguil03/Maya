@@ -117,6 +117,9 @@ jobs:
           ruby-version: '3.2'
           bundler-cache: true
 
+      - name: 🧹 Clean Xcode Derived Data
+        run: rm -rf ~/Library/Developer/Xcode/DerivedData
+
       - name: 📱 Install CocoaPods dependencies
         run: |
           cd ios
@@ -131,13 +134,16 @@ jobs:
       - name: 🏗️ Build iOS (without signing for check)
         run: |
           cd ios
+          # Build for generic iOS device (not simulator) to avoid runtime issues
           xcodebuild clean build \
             -workspace maya.xcworkspace \
             -scheme Maya \
             -configuration Release \
-            -sdk iphonesimulator \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGNING_REQUIRED=NO \
+            ONLY_ACTIVE_ARCH=NO
 
       - name: ✅ Build successful
         run: echo "✅ iOS build completed successfully!"
