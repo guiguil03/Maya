@@ -62,10 +62,18 @@ jobs:
           android.enableJetifier=true
           EOF
 
-      - name: 🏗️ Build Android APK with Fastlane
+      - name: 🔍 Debug - Check paths and fastlane folder
         run: |
-          cd android
-          bundle exec fastlane build_apk
+          echo "Current directory:"
+          pwd
+          echo -e "\nRoot directory contents:"
+          ls -la
+          echo -e "\nAndroid fastlane folder:"
+          ls -la android/fastlane/ || echo "android/fastlane not found"
+
+      - name: 🏗️ Build Android APK with Fastlane
+        working-directory: android
+        run: bundle exec fastlane build_apk
 
       - name: 📤 Upload APK artifact
         uses: actions/upload-artifact@v4
