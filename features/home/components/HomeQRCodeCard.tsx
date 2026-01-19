@@ -5,6 +5,7 @@ import React from 'react';
 import {
   ActivityIndicator,
   Image,
+  ImageStyle,
   StyleSheet,
   Text,
   TextStyle,
@@ -96,13 +97,13 @@ export const HomeQRCodeCard: React.FC<HomeQRCodeCardProps> = ({
                       ? qrCodeResponse.imageBase64
                       : `data:image/png;base64,${qrCodeResponse.imageBase64}`,
                   }}
-                  style={styles.qrCodeImage}
+                  style={styles.qrCodeImage as ImageStyle}
                   resizeMode="contain"
                 />
               ) : qrCodeResponse?.qrCodeUrl ? (
                 <Image
                   source={{ uri: qrCodeResponse.qrCodeUrl }}
-                  style={styles.qrCodeImage}
+                  style={styles.qrCodeImage as ImageStyle}
                   resizeMode="contain"
                 />
               ) : qrData?.token ? (
@@ -110,7 +111,7 @@ export const HomeQRCodeCard: React.FC<HomeQRCodeCardProps> = ({
                   source={{
                     uri: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData.token)}&format=png&margin=1`,
                   }}
-                  style={styles.qrCodeImage}
+                  style={styles.qrCodeImage as ImageStyle}
                   resizeMode="contain"
                 />
               ) : null}

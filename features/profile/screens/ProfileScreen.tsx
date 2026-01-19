@@ -1,11 +1,12 @@
 import { NavigationTransition } from '@/components/common/navigation-transition';
 import { DebugUsersViewer } from '@/components/debug-users-viewer';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/design-system';
-import { useAuth } from '@/hooks/use-auth';
-import { AuthService } from '@/services/auth.service';
-import { ProfileApi } from '@/features/profile/services/profileApi';
 import { SubscriptionsApi } from '@/features/subscription/services/subscriptionsApi';
+import { useAuth } from '@/hooks/use-auth';
+import { API_BASE_URL, AuthService } from '@/services/auth.service';
+import { uploadAvatar as uploadAvatarApi } from '@/services/auth/auth.profile';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -38,6 +39,87 @@ export default function ProfileScreen() {
   const [subscription, setSubscription] = useState<any | null>(null);
   const [hasSubscription, setHasSubscription] = useState(false);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarBase64, setAvatarBase64] = useState<string | null>(null);
+
+  // Fonction pour charger l'avatar avec authentification
+  const loadAvatarWithAuth = async (avatarUrl: string) => {
+    try {
+      const token = await AuthService.getAccessToken();
+      if (!token) {
+        console.warn('⚠️ [Profile] Pas de token pour charger l\'avatar');
+        return null;
+      }
+
+      // Construire l'URL complète
+      let imageUrl = avatarUrl;
+      if (!avatarUrl.startsWith('http://') && !avatarUrl.startsWith('https://')) {
+        // Si avatarUrl commence déjà par /, c'est un chemin absolu depuis la racine du serveur
+        // Sinon, c'est un chemin relatif
+        
+        const urlObj = new URL(API_BASE_URL);
+        const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+        
+        // Si avatarUrl commence par /, on l'utilise tel quel (chemin absolu)
+        // Sinon, on enlève les slashes en début et on ajoute un /
+        if (avatarUrl.startsWith('/')) {
+          // Chemin absolu : /uploads/avatars/...
+          imageUrl = `${baseUrl}${avatarUrl}`;
+        } else {
+          // Chemin relatif : uploads/avatars/... (sans slash initial)
+          imageUrl = `${baseUrl}/${avatarUrl}`;
+        }
+        
+        // Nettoyer les doubles slashes (sauf après le protocole http:// ou https://)
+        imageUrl = imageUrl.replace(/([^:]\/)\/+/g, '$1');
+      }
+
+      console.log('📥 [Profile] Chargement avatar avec auth:', { 
+        originalAvatarUrl: avatarUrl,
+        baseUrl: API_BASE_URL,
+        finalImageUrl: imageUrl,
+        imageUrlLength: imageUrl.length,
+        startsWithSlash: avatarUrl.startsWith('/'),
+        startsWithHttp: avatarUrl.startsWith('http'),
+      });
+
+      // Télécharger l'image avec authentification
+      const response = await fetch(imageUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        console.error('❌ [Profile] Erreur HTTP lors du chargement avatar:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: imageUrl,
+          errorText: errorText.substring(0, 200),
+        });
+        return null;
+      }
+
+      // Convertir en base64
+      const blob = await response.blob();
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = reader.result as string;
+          // Enlever le préfixe data:image/...;base64,
+          const base64Data = base64.split(',')[1];
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error('❌ [Profile] Erreur lors du chargement avatar avec auth:', error);
+      return null;
+    }
+  };
 
   // Charger les informations complètes de l'utilisateur
   useEffect(() => {
@@ -53,8 +135,34 @@ export default function ProfileScreen() {
           lastName: info.lastName,
           hasAddress: !!info.address,
           hasBirthDate: !!info.birthDate,
+          hasAvatarBase64: !!info.avatarBase64,
+          hasAvatarUrl: !!(info as any)?.avatarUrl,
+          hasAvatar: !!(info as any)?.avatar,
+          allKeys: Object.keys(info || {}),
         });
         setUserInfo(info);
+
+        // Charger l'avatar si on a une URL mais pas de base64
+        if (!info.avatarBase64 && ((info as any)?.avatarUrl || (info as any)?.avatar)) {
+          const avatarUrl = (info as any)?.avatarUrl || (info as any)?.avatar;
+          console.log('🔄 [Profile] Chargement avatar depuis URL:', {
+            avatarUrl,
+            avatarUrlType: typeof avatarUrl,
+            avatarUrlLength: avatarUrl?.length,
+            startsWithSlash: avatarUrl?.startsWith('/'),
+            startsWithHttp: avatarUrl?.startsWith('http'),
+          });
+          const base64 = await loadAvatarWithAuth(avatarUrl);
+          if (base64) {
+            setAvatarBase64(base64);
+            console.log('✅ [Profile] Avatar chargé en base64, longueur:', base64.length);
+          } else {
+            console.warn('⚠️ [Profile] Impossible de charger l\'avatar depuis l\'URL');
+          }
+        } else if (info.avatarBase64) {
+          setAvatarBase64(info.avatarBase64);
+          console.log('✅ [Profile] Avatar base64 déjà présent dans userInfo');
+        }
 
         // Récupérer l'abonnement actif de l'utilisateur connecté
         setSubscriptionLoading(true);
@@ -133,6 +241,129 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleAvatarPress = () => {
+    Alert.alert(
+      'Changer la photo de profil',
+      'Choisissez une option',
+      [
+        {
+          text: 'Galerie',
+          onPress: () => pickImageFromLibrary(),
+        },
+        {
+          text: 'Caméra',
+          onPress: () => takePhotoWithCamera(),
+        },
+        {
+          text: 'Annuler',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const pickImageFromLibrary = async () => {
+    try {
+      // Demander la permission
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission requise',
+          'Nous avons besoin de l\'accès à votre galerie pour sélectionner une photo.'
+        );
+        return;
+      }
+
+      // Ouvrir la galerie
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const imageUri = result.assets[0].uri;
+        await uploadAvatarImage(imageUri);
+      }
+    } catch (error) {
+      console.error('❌ [Profile] Erreur lors de la sélection depuis la galerie:', error);
+      Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
+    }
+  };
+
+  const takePhotoWithCamera = async () => {
+    try {
+      // Demander la permission
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission requise',
+          'Nous avons besoin de l\'accès à votre caméra pour prendre une photo.'
+        );
+        return;
+      }
+
+      // Ouvrir la caméra
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const imageUri = result.assets[0].uri;
+        await uploadAvatarImage(imageUri);
+      }
+    } catch (error) {
+      console.error('❌ [Profile] Erreur lors de la prise de photo:', error);
+      Alert.alert('Erreur', 'Impossible de prendre la photo');
+    }
+  };
+
+  const uploadAvatarImage = async (imageUri: string) => {
+    setUploadingAvatar(true);
+    try {
+      console.log('📤 [Profile] Upload de l\'avatar...');
+      const updatedUser = await uploadAvatarApi(imageUri);
+      
+      // Attendre un peu pour que l'API mette à jour l'avatar
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Recharger les informations utilisateur complètes pour avoir l'avatar à jour
+      const freshUserInfo = await AuthService.getCurrentUserInfo();
+      
+      console.log('📸 [Profile] Données utilisateur après upload:', {
+        hasAvatarBase64: !!freshUserInfo?.avatarBase64,
+        hasAvatarUrl: !!(freshUserInfo as any)?.avatarUrl,
+        hasAvatar: !!(freshUserInfo as any)?.avatar,
+        userInfoKeys: Object.keys(freshUserInfo || {}),
+        fullUserInfo: JSON.stringify(freshUserInfo, null, 2),
+      });
+      
+      setUserInfo(freshUserInfo);
+      
+      // Rafraîchir aussi le contexte utilisateur
+      await refreshUser();
+      
+      console.log('✅ [Profile] Avatar uploadé avec succès', {
+        hasAvatar: !!freshUserInfo?.avatarBase64 || !!(freshUserInfo as any)?.avatarUrl || !!(freshUserInfo as any)?.avatar,
+        avatarBase64: !!freshUserInfo?.avatarBase64,
+        avatarUrl: !!(freshUserInfo as any)?.avatarUrl,
+        avatar: !!(freshUserInfo as any)?.avatar,
+      });
+      Alert.alert('Succès', 'Votre photo de profil a été mise à jour');
+    } catch (error) {
+      console.error('❌ [Profile] Erreur lors de l\'upload de l\'avatar:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erreur lors de l\'upload';
+      Alert.alert('Erreur', errorMessage);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   return (
     <NavigationTransition>
       <LinearGradient
@@ -176,13 +407,84 @@ export default function ProfileScreen() {
                 style={styles.profileCard}
               >
                 <View style={styles.profileHeader}>
-                  <View style={styles.avatarContainer}>
-                    {userInfo?.avatarBase64 ? (
-                      <Image 
-                        source={{ uri: `data:image/jpeg;base64,${userInfo.avatarBase64}` }}
-                        style={styles.avatarImage}
-                      />
-                    ) : (
+                  <TouchableOpacity 
+                    style={styles.avatarContainer} 
+                    onPress={handleAvatarPress}
+                    disabled={uploadingAvatar}
+                    activeOpacity={0.7}
+                  >
+                    {uploadingAvatar ? (
+                      <View style={styles.avatarBadge}>
+                        <ActivityIndicator size="large" color={Colors.text.light} />
+                      </View>
+                    ) : (() => {
+                      // Utiliser avatarBase64 du state si disponible, sinon celui de userInfo
+                      const finalAvatarBase64 = avatarBase64 || userInfo?.avatarBase64;
+                      
+                      // Vérifier si on a un avatar (base64 ou URL)
+                      const hasAvatar = finalAvatarBase64 || (userInfo as any)?.avatarUrl || (userInfo as any)?.avatar;
+                      if (!hasAvatar) return null;
+                      
+                      let imageUri = '';
+                      if (finalAvatarBase64) {
+                        imageUri = `data:image/jpeg;base64,${finalAvatarBase64}`;
+                      } else {
+                        // Si pas de base64, essayer l'URL (mais ça ne marchera probablement pas sans auth)
+                        const avatarUrl = (userInfo as any)?.avatarUrl || (userInfo as any)?.avatar;
+                        if (avatarUrl) {
+                          if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+                            imageUri = avatarUrl;
+                          } else {
+                            // Construire l'URL complète depuis le chemin relatif
+                            const urlObj = new URL(API_BASE_URL);
+                            const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+                            const cleanAvatarUrl = avatarUrl.replace(/^\/+/, '');
+                            imageUri = `${baseUrl}/${cleanAvatarUrl}`.replace(/([^:]\/)\/+/g, '$1');
+                          }
+                        }
+                      }
+                      
+                      console.log('🖼️ [Profile] Affichage avatar:', {
+                        hasAvatarBase64: !!userInfo?.avatarBase64,
+                        hasAvatarUrl: !!(userInfo as any)?.avatarUrl,
+                        hasAvatar: !!(userInfo as any)?.avatar,
+                        imageUri: imageUri.length > 100 ? imageUri.substring(0, 100) + '...' : imageUri,
+                        fullImageUri: imageUri,
+                      });
+                      
+                      return (
+                        <View style={styles.avatarImageContainer}>
+                          <Image 
+                            source={{ 
+                              uri: imageUri,
+                              cache: 'default',
+                              headers: {
+                                // Ajouter les headers nécessaires pour ngrok si besoin
+                                'ngrok-skip-browser-warning': 'true',
+                              },
+                            }}
+                            style={styles.avatarImage}
+                            resizeMode="cover"
+                            onError={(error) => {
+                              console.error('❌ [Profile] Erreur chargement image:', {
+                                error: error.nativeEvent?.error || error,
+                                imageUri: imageUri,
+                                imageUriLength: imageUri.length,
+                              });
+                            }}
+                            onLoad={() => {
+                              console.log('✅ [Profile] Image avatar chargée avec succès', { imageUri });
+                            }}
+                            onLoadStart={() => {
+                              console.log('🔄 [Profile] Début du chargement de l\'image', { imageUri });
+                            }}
+                          />
+                          <View style={styles.avatarEditOverlay}>
+                            <Ionicons name="camera" size={20} color={Colors.text.light} />
+                          </View>
+                        </View>
+                      );
+                    })() || (
                       <LinearGradient
                         colors={['#8B2F3F', '#A53F51']}
                         start={{ x: 0, y: 0 }}
@@ -192,10 +494,13 @@ export default function ProfileScreen() {
                         <Text style={styles.avatarInitials}>
                           {userInfo ? `${userInfo.firstName?.charAt(0) || ''}${userInfo.lastName?.charAt(0) || ''}`.toUpperCase() : 'U'}
                         </Text>
+                        <View style={styles.avatarEditIcon}>
+                          <Ionicons name="camera" size={16} color={Colors.text.light} />
+                        </View>
                       </LinearGradient>
                     )}
                     <View style={styles.onlineIndicator} />
-                  </View>
+                  </TouchableOpacity>
                   <View style={styles.profileInfo}>
                     <View style={styles.userNameRow}>
                       <Text style={styles.userName}>
@@ -565,6 +870,12 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: 'rgba(255, 255, 255, 0.3)',
     ...Shadows.lg,
+    position: 'relative',
+  } as ViewStyle,
+  avatarImageContainer: {
+    position: 'relative',
+    width: 88,
+    height: 88,
   } as ViewStyle,
   avatarImage: {
     width: 88,
@@ -572,6 +883,32 @@ const styles = StyleSheet.create({
     borderRadius: 44,
     borderWidth: 3,
     borderColor: 'rgba(255, 255, 255, 0.3)',
+  } as ViewStyle,
+  avatarEditOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: BorderRadius.full,
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+  } as ViewStyle,
+  avatarEditIcon: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: BorderRadius.full,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
   } as ViewStyle,
   onlineIndicator: {
     position: 'absolute',

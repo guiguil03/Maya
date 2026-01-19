@@ -6,6 +6,8 @@ import { useError, useLoading } from '@/contexts/app-context';
 import { ApiClient, ApiClientOptions } from '@/services/shared/api-client';
 import { ApiError } from '@/services/shared/errors';
 import { log } from '@/utils/logger';
+import { offlineSync } from '@/utils/offline-sync';
+import { persistentCache } from '@/utils/persistent-cache';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export interface UseApiOptions<T> {
@@ -45,6 +47,14 @@ export interface UseApiOptions<T> {
    * Nombre de tentatives en cas d'erreur
    */
   retryCount?: number;
+  /**
+   * Si true, utilise le cache persistant (AsyncStorage) au lieu du cache mémoire uniquement
+   */
+  usePersistentCache?: boolean;
+  /**
+   * Si true, queue la requête en cas d'erreur réseau pour synchronisation offline
+   */
+  enableOfflineSync?: boolean;
 }
 
 export interface UseApiResult<T> {
@@ -74,11 +84,11 @@ export interface UseApiResult<T> {
   isCached: boolean;
 }
 
-// Cache global simple
+// Cache mémoire rapide (complémentaire au cache persistant)
 const apiCache = new Map<string, { data: unknown; timestamp: number; cacheTime: number }>();
 
 /**
- * Nettoie le cache des entrées expirées
+ * Nettoie le cache mémoire des entrées expirées
  */
 function cleanCache(): void {
   const now = Date.now();
@@ -111,6 +121,8 @@ export function useApi<T>(
     cacheTime = 5 * 60 * 1000, // 5 minutes par défaut
     retryOnError = false,
     retryCount = 3,
+    usePersistentCache = false,
+    enableOfflineSync = false,
   } = options;
 
   const [data, setData] = useState<T | null>(null);
@@ -139,8 +151,9 @@ export function useApi<T>(
       return;
     }
 
-    // Vérifier le cache
+    // Vérifier le cache (mémoire puis persistant)
     if (!skipCache && effectiveCacheKey) {
+      // Cache mémoire d'abord
       const cached = apiCache.get(effectiveCacheKey);
       if (cached && Date.now() - cached.timestamp < cached.cacheTime) {
         if (mountedRef.current) {
@@ -150,9 +163,32 @@ export function useApi<T>(
           if (onSuccess) {
             onSuccess(cached.data as T);
           }
-          log.debug(`Données récupérées du cache: ${effectiveCacheKey}`);
+          log.debug(`Données récupérées du cache mémoire: ${effectiveCacheKey}`);
         }
         return;
+      }
+
+      // Si pas en mémoire et cache persistant activé, vérifier AsyncStorage
+      if (usePersistentCache) {
+        const persistentCached = await persistentCache.get<T>(effectiveCacheKey);
+        if (persistentCached) {
+          if (mountedRef.current) {
+            setData(persistentCached);
+            setIsCached(true);
+            setError(null);
+            // Remettre en cache mémoire pour les prochaines requêtes
+            apiCache.set(effectiveCacheKey, {
+              data: persistentCached,
+              timestamp: Date.now(),
+              cacheTime,
+            });
+            if (onSuccess) {
+              onSuccess(persistentCached);
+            }
+            log.debug(`Données récupérées du cache persistant: ${effectiveCacheKey}`);
+          }
+          return;
+        }
       }
     }
 
@@ -173,13 +209,18 @@ export function useApi<T>(
       setGlobalError(null);
       retryCountRef.current = 0;
       
-      // Mettre en cache
+      // Mettre en cache (mémoire et persistant si activé)
       if (effectiveCacheKey) {
         apiCache.set(effectiveCacheKey, {
           data: result,
           timestamp: Date.now(),
           cacheTime,
         });
+        
+        // Cache persistant si activé
+        if (usePersistentCache) {
+          await persistentCache.set(effectiveCacheKey, result, cacheTime);
+        }
       }
       
       if (onSuccess) {
@@ -200,6 +241,32 @@ export function useApi<T>(
         log.debug(`Tentative ${retryCountRef.current}/${retryCount} pour ${endpoint}`);
         await new Promise(resolve => setTimeout(resolve, 1000 * retryCountRef.current));
         return execute(skipCache);
+      }
+
+      // Si erreur réseau et synchronisation offline activée, queue la requête
+      if (enableOfflineSync && apiError.isRetryable) {
+        try {
+          const syncOptions: any = {};
+          if (apiOptions?.baseUrlOverride) {
+            syncOptions.baseUrlOverride = apiOptions.baseUrlOverride;
+          }
+          if (apiOptions?.retry?.maxAttempts && apiOptions?.retry?.delay) {
+            syncOptions.retry = {
+              maxAttempts: apiOptions.retry.maxAttempts,
+              delay: apiOptions.retry.delay,
+            };
+          }
+          
+          await offlineSync.queueRequest({
+            method: 'GET',
+            endpoint,
+            options: Object.keys(syncOptions).length > 0 ? syncOptions : undefined,
+            maxRetries: retryCount,
+          });
+          log.info('Requête ajoutée à la queue offline', { endpoint });
+        } catch (syncError) {
+          log.error('Erreur lors de l\'ajout à la queue offline', syncError as Error);
+        }
       }
 
       setError(apiError);
@@ -228,6 +295,8 @@ export function useApi<T>(
     cacheTime,
     retryOnError,
     retryCount,
+    usePersistentCache,
+    enableOfflineSync,
   ]);
 
   useEffect(() => {
@@ -283,6 +352,7 @@ export function useMutation<TData, TVariables = unknown>(
     onError,
     useGlobalLoading = false,
     cacheKey,
+    enableOfflineSync = false,
   } = options;
 
   const [data, setData] = useState<TData | null>(null);
@@ -325,6 +395,7 @@ export function useMutation<TData, TVariables = unknown>(
       // Invalider le cache si une clé est fournie
       if (cacheKey) {
         apiCache.delete(cacheKey);
+        await persistentCache.delete(cacheKey);
       }
       
       if (onSuccess) {
@@ -337,6 +408,33 @@ export function useMutation<TData, TVariables = unknown>(
       const apiError = err instanceof ApiError ? err : new ApiError(
         err instanceof Error ? err.message : 'Erreur inconnue'
       );
+
+      // Si erreur réseau et synchronisation offline activée, queue la requête
+      if (enableOfflineSync && apiError.isRetryable) {
+        try {
+          const syncOptions: any = {};
+          if (apiOptions?.baseUrlOverride) {
+            syncOptions.baseUrlOverride = apiOptions.baseUrlOverride;
+          }
+          if (apiOptions?.retry?.maxAttempts && apiOptions?.retry?.delay) {
+            syncOptions.retry = {
+              maxAttempts: apiOptions.retry.maxAttempts,
+              delay: apiOptions.retry.delay,
+            };
+          }
+          
+          await offlineSync.queueRequest({
+            method,
+            endpoint,
+            body: variables,
+            options: Object.keys(syncOptions).length > 0 ? syncOptions : undefined,
+            maxRetries: 3,
+          });
+          log.info('Mutation ajoutée à la queue offline', { method, endpoint });
+        } catch (syncError) {
+          log.error('Erreur lors de l\'ajout à la queue offline', syncError as Error);
+        }
+      }
 
       setError(apiError);
       setGlobalError(apiError.getUserMessage());
@@ -351,7 +449,7 @@ export function useMutation<TData, TVariables = unknown>(
     } finally {
       setLoadingState(false);
     }
-  }, [endpoint, method, apiOptions, onSuccess, onError, useGlobalLoading, setGlobalLoading, setGlobalError, cacheKey]);
+  }, [endpoint, method, apiOptions, onSuccess, onError, useGlobalLoading, setGlobalLoading, setGlobalError, cacheKey, enableOfflineSync]);
 
   const mutate = useCallback(async (variables?: TVariables): Promise<TData | null> => {
     try {

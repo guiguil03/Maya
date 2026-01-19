@@ -35,7 +35,7 @@ export const PaymentApi = {
    */
   processPayPalPayment: async (request: PaymentRequest): Promise<PaymentResponse> => {
     try {
-      log.info('Traitement du paiement PayPal', request);
+      log.info('Traitement du paiement PayPal', { request });
       
       // TODO: Intégrer le SDK PayPal réel
       // Simulation du processus PayPal
@@ -64,7 +64,7 @@ export const PaymentApi = {
    */
   processApplePayPayment: async (request: PaymentRequest): Promise<PaymentResponse> => {
     try {
-      log.info('Traitement du paiement Apple Pay', request);
+      log.info('Traitement du paiement Apple Pay', { request });
       
       // Vérifier si Apple Pay est disponible
       const isAvailable = await PaymentApi.isApplePayAvailable();
@@ -98,7 +98,7 @@ export const PaymentApi = {
    */
   processGooglePayPayment: async (request: PaymentRequest): Promise<PaymentResponse> => {
     try {
-      log.info('Traitement du paiement Google Pay', request);
+      log.info('Traitement du paiement Google Pay', { request });
       
       // Simulation du processus Google Pay
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -126,7 +126,7 @@ export const PaymentApi = {
    */
   processCardPayment: async (request: PaymentRequest): Promise<PaymentResponse> => {
     try {
-      log.info('Traitement du paiement par carte', request);
+      log.info('Traitement du paiement par carte', { request }  );
       
       // TODO: Intégrer Stripe pour les paiements par carte
       // Pour l'instant, simulation
@@ -154,7 +154,7 @@ export const PaymentApi = {
    * Traiter un paiement (méthode principale)
    */
   processPayment: async (request: PaymentRequest): Promise<PaymentResponse> => {
-    log.info('Début du traitement du paiement', request);
+    log.info('Début du traitement du paiement', { request });
     
     switch (request.paymentMethod) {
       case 'paypal':
