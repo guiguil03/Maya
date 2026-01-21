@@ -41,3 +41,6 @@ build/
 
 expo-env.d.ts
 # @end expo-cli
+
+# Android
+android/app/maya-release.keystore

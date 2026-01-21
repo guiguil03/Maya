@@ -131,7 +131,7 @@ jobs:
           type("appstore")
           app_identifier(["com.maya.connect"])
           api_key_path("fastlane/keys/api_key.json")
-          readonly(false)
+          readonly(true)
           EOF
 
           echo "✅ Matchfile created"
